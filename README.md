@@ -1,7 +1,5 @@
 # Sethiya Gold - Jewelry Shop Management System
 
-![Sethiya Gold](public/placeholder-logo.svg)
-
 ## Overview
 
 Sethiya Gold is a comprehensive management system designed specifically for Indian jewelry shops. This Next.js application helps jewelry store owners streamline their business operations with robust invoicing, inventory management, customer relationship management, and reporting capabilities.
