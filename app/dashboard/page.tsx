@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   Receipt,
   Calendar,
+  Settings,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -250,6 +251,26 @@ export default function DashboardPage() {
             </Card>
           </Link>
 
+          {/* Settings Tile */}
+          <Link href="/settings" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-primary" />
+                  Settings
+                </CardTitle>
+                <CardDescription>Configure system preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <Settings className="h-12 w-12" />
+                </div>
+              </CardContent>
+              <CardFooter className="text-sm text-muted-foreground">
+                Manage firm details, notifications, and data backups
+              </CardFooter>
+            </Card>
+          </Link>
 
         </div>
 
