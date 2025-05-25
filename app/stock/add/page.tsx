@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, FileText, Home, Save, Upload, X, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -23,31 +23,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useAuth } from "@/components/auth-provider"
+import supabase from "@/lib/supabase"
+import { compressImage } from "@/lib/imageUtils"
 
 export default function AddStockItemPage() {
   const router = useRouter()
+  const { user } = useAuth()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
   const [formData, setFormData] = useState({
-    name: "",
     category: "",
     material: "Gold",
     purity: "22K",
     weight: 0,
-    stock: 1,
     description: "",
     supplier: "",
     purchaseDate: new Date().toISOString().split("T")[0],
     purchasePrice: 0,
   })
 
+  const [itemNumber, setItemNumber] = useState("")
+
   const [images, setImages] = useState<{ preview: string; file?: File }[]>([
     { preview: "/placeholder.svg?height=300&width=300" },
   ])
+
+  const generateItemNumber = (category: string): string => {
+    // Take the first 3 letters of the category and convert to uppercase
+    let prefix = category.substring(0, 3).toUpperCase()
+    // Pad with 'X' if category is less than 3 letters
+    while (prefix.length < 3) {
+      prefix += 'X'
+    }
+    // Generate a random 4-digit number
+    const randomNum = Math.floor(1000 + Math.random() * 9000).toString()
+    return `${prefix}${randomNum}`
+  }
+
+  // Update item number when category changes
+  useEffect(() => {
+    if (formData.category) {
+      setItemNumber(generateItemNumber(formData.category))
+    }
+  }, [formData.category])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
-      [name]: ["weight", "stock", "purchasePrice"].includes(name)
+      [name]: ["weight", "purchasePrice"].includes(name)
         ? Number.parseFloat(value) || 0
         : value,
     }))
@@ -100,22 +125,23 @@ export default function AddStockItemPage() {
     setImages(newImages);
   }
 
-  const generateItemId = () => {
-    const categoryCode = formData.category ? formData.category.substring(0, 2).toUpperCase() : "XX"
-    const randomNum = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0")
-    return `JWL-${categoryCode}-${randomNum}`
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to add stock items.",
+        variant: "destructive",
+      })
+      return
+    }
 
     // Validate form
-    if (!formData.name || !formData.category || !formData.material) {
+    if (!formData.category || !formData.material) {
       toast({
         title: "Missing required fields",
-        description: "Please fill in all required fields: Item Name, Category, Material.",
+        description: "Please fill in all required fields: Category, Material.",
         variant: "destructive",
       })
       return
@@ -131,25 +157,114 @@ export default function AddStockItemPage() {
       });
       return;
     }
+    
+    setIsSubmitting(true)
+    
+    try {
+      // Fetch user's compression settings
+      let compressionLevel: 'none' | 'low' | 'medium' | 'high' = 'medium'; // Default
+      try {
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('user_settings')
+          .select('photo_compression_level')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (settingsError && settingsError.code !== 'PGRST116') throw settingsError; // PGRST116 means no row, use default
+        if (settingsData && settingsData.photo_compression_level) {
+          compressionLevel = settingsData.photo_compression_level;
+        }
+      } catch (error) {
+        console.error("Error fetching compression settings:", error);
+        // Continue with default compression
+      }
+      
+      // Process and upload images
+      const uploadedImageUrls: string[] = [];
+      
+      const imageUploadPromises = images
+        .filter(img => img.file) // Process only images with an actual file
+        .map(async (imageState, index) => {
+          const fileToProcess = imageState.file!;
+          const compressedFile = await compressImage(fileToProcess, compressionLevel);
+          const fileExt = fileToProcess.name.split('.').pop();
+          const fileName = `${Date.now()}_${index}.${fileExt}`; // Or use uuid
+          const filePath = `${user.id}/${itemNumber}/${fileName}`;
 
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('stock_item_images')
+            .upload(filePath, compressedFile);
 
-    // Generate item ID
-    const itemId = generateItemId()
+          if (uploadError) {
+            console.error('Error uploading image:', uploadError);
+            throw new Error(`Failed to upload image ${fileToProcess.name}: ${uploadError.message}`);
+          }
+          
+          return supabase.storage.from('stock_item_images').getPublicUrl(filePath).data.publicUrl;
+        });
 
-    // In a real app, you would submit the form data and images to your API here
-    console.log("Form Data:", formData)
-    console.log(
-      "Images:",
-      images.map((img) => img.file?.name || "placeholder")
-    )
-
-    toast({
-      title: "Item added successfully",
-      description: `Item ${itemId} (${formData.name}) has been added to inventory.`,
-    })
-
-    // Redirect to stock page
-    router.push("/stock")
+      try {
+        const urls = await Promise.all(imageUploadPromises);
+        uploadedImageUrls.push(...urls);
+      } catch (error: any) {
+        toast({ 
+          title: "Image Upload Failed", 
+          description: error.message, 
+          variant: "destructive" 
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Prepare data for database insertion
+      const stockItemData = {
+        user_id: user.id,
+        item_number: itemNumber,
+        category: formData.category,
+        material: formData.material,
+        purity: formData.purity || null,
+        weight: formData.weight,
+        description: formData.description || null,
+        supplier: formData.supplier || null,
+        purchase_date: formData.purchaseDate || null,
+        purchase_price: formData.purchasePrice,
+        image_urls: uploadedImageUrls
+      };
+      
+      // Insert into Supabase
+      const { data, error: dbError } = await supabase
+        .from('stock_items')
+        .insert([stockItemData])
+        .select();
+        
+      if (dbError) {
+        console.error("Database error:", dbError);
+        toast({
+          title: "Failed to save item",
+          description: dbError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Item added successfully",
+        description: `Item ${itemNumber} has been added to inventory.`,
+      });
+      
+      // Redirect to stock page
+      router.push("/stock");
+      
+    } catch (error: any) {
+      console.error("Error saving stock item:", error);
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -182,22 +297,19 @@ export default function AddStockItemPage() {
         <form onSubmit={handleSubmit} className="space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Enter the basic details of the jewelry item.</CardDescription>
+              <CardTitle>Stock Item</CardTitle>
+              <CardDescription>Enter the details of the jewelry item, including inventory specifics and purchase information.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Item Name <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="itemNumber">Item Number</Label>
                   <Input
-                    id="name"
-                    name="name"
-                    placeholder="e.g., Gold Necklace 22K"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
+                    id="itemNumber"
+                    name="itemNumber"
+                    value={itemNumber}
+                    readOnly
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
@@ -300,6 +412,7 @@ export default function AddStockItemPage() {
                   />
                 </div>
               </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
@@ -311,33 +424,8 @@ export default function AddStockItemPage() {
                   rows={3}
                 />
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock Details</CardTitle>
-              <CardDescription>
-                Manage inventory specifics, purchase information, and item images.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="stock">
-                    Quantity in Stock <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="stock"
-                    name="stock"
-                    type="number"
-                    placeholder="e.g., 5"
-                    value={formData.stock}
-                    onChange={handleChange}
-                    min="0"
-                    required
-                  />
-                </div>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="supplier">Supplier / Source</Label>
                   <Input
@@ -348,9 +436,6 @@ export default function AddStockItemPage() {
                     onChange={handleChange}
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                  <div className="space-y-2">
                   <Label htmlFor="purchasePrice">
                     Purchase Price (₹ per item) <span className="text-destructive">*</span>
@@ -437,16 +522,25 @@ export default function AddStockItemPage() {
                 </div>
               </div>
             </CardContent>
+            <CardFooter className="flex justify-between border-t pt-5">
+              <Button variant="outline" type="button" onClick={() => router.push("/stock")}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Item
+                  </>
+                )}
+              </Button>
+            </CardFooter>
           </Card>
-
-          <CardFooter className="flex justify-end gap-2 border-t px-6 py-4">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
-              Cancel
-            </Button>
-            <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
-              <Save className="mr-2 h-4 w-4" /> Add Item to Inventory
-            </Button>
-          </CardFooter>
         </form>
       </main>
     </div>

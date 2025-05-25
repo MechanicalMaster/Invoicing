@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Download, FileText, Home, Mail, Phone, Save, Settings, Upload, Building, Bell, Database, Receipt, Tag, Image } from "lucide-react"
 
@@ -13,8 +13,14 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/components/auth-provider"
+import supabase from "@/lib/supabase"
+import { Textarea } from "@/components/ui/textarea"
 
 export default function SettingsPage() {
+  const { user, isLoading } = useAuth();
+  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
+  
   const [firmDetails, setFirmDetails] = useState({
     name: "Sethiya Gold",
     phone: "+91 9876543210",
@@ -35,27 +41,227 @@ export default function SettingsPage() {
     quietHoursEnd: "07:00"
   });
   
+  const [invoiceSettings, setInvoiceSettings] = useState({
+    defaultPrefix: "INV-",
+    nextNumber: 1,
+    defaultNotes: ""
+  });
+  
+  const [labelSettings, setLabelSettings] = useState({
+    type: "standard",
+    copies: 1,
+    includeProductName: true,
+    includePrice: true,
+    includeBarcode: true,
+    includeDate: true,
+    includeMetal: true,
+    includeWeight: true,
+    includePurity: true,
+    includeQrCode: true
+  });
+  
+  const [photoSettings, setPhotoSettings] = useState({
+    compressionLevel: "medium"
+  });
+  
   const [backupFileName, setBackupFileName] = useState("");
   
-  const handleFirmDetailChange = (field, value) => {
+  // Fetch user settings when component mounts and user is available
+  useEffect(() => {
+    const fetchUserSettings = async () => {
+      if (!user) return;
+      
+      try {
+        setIsSettingsLoading(true);
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) {
+          // If error is not 'no rows returned', show error
+          if (error.code !== 'PGRST116') {
+            console.error('Error fetching settings:', error);
+            toast({
+              title: "Error loading settings",
+              description: "There was a problem loading your settings. Please try again.",
+              variant: "destructive",
+            });
+          }
+          // For first time users or no settings found, keep default values
+        } else if (data) {
+          // Update firm details
+          setFirmDetails({
+            name: data.firm_name || firmDetails.name,
+            phone: data.firm_phone || firmDetails.phone,
+            address: data.firm_address || firmDetails.address,
+            gstin: data.firm_gstin || firmDetails.gstin,
+            email: data.firm_email || firmDetails.email,
+            website: data.firm_website || firmDetails.website,
+            establishmentDate: data.firm_establishment_date || firmDetails.establishmentDate
+          });
+          
+          // Update notification settings
+          setNotificationSettings({
+            email: data.notifications_email_enabled ?? notificationSettings.email,
+            push: data.notifications_push_enabled ?? notificationSettings.push,
+            sms: data.notifications_sms_enabled ?? notificationSettings.sms,
+            whatsapp: data.notifications_whatsapp_enabled ?? notificationSettings.whatsapp,
+            frequency: data.notifications_frequency || notificationSettings.frequency,
+            quietHoursStart: data.notifications_quiet_hours_start || notificationSettings.quietHoursStart,
+            quietHoursEnd: data.notifications_quiet_hours_end || notificationSettings.quietHoursEnd
+          });
+          
+          // Update invoice settings
+          setInvoiceSettings({
+            defaultPrefix: data.invoice_default_prefix || invoiceSettings.defaultPrefix,
+            nextNumber: data.invoice_next_number || invoiceSettings.nextNumber,
+            defaultNotes: data.invoice_default_notes || invoiceSettings.defaultNotes
+          });
+          
+          // Update label settings
+          setLabelSettings({
+            type: data.label_type || labelSettings.type,
+            copies: data.label_copies || labelSettings.copies,
+            includeProductName: data.label_include_product_name ?? labelSettings.includeProductName,
+            includePrice: data.label_include_price ?? labelSettings.includePrice,
+            includeBarcode: data.label_include_barcode ?? labelSettings.includeBarcode,
+            includeDate: data.label_include_date ?? labelSettings.includeDate,
+            includeMetal: data.label_include_metal ?? labelSettings.includeMetal,
+            includeWeight: data.label_include_weight ?? labelSettings.includeWeight,
+            includePurity: data.label_include_purity ?? labelSettings.includePurity,
+            includeQrCode: data.label_include_qr_code ?? labelSettings.includeQrCode
+          });
+          
+          // Update photo settings
+          setPhotoSettings({
+            compressionLevel: data.photo_compression_level || photoSettings.compressionLevel
+          });
+        }
+      } catch (error) {
+        console.error('Error in fetchUserSettings:', error);
+      } finally {
+        setIsSettingsLoading(false);
+      }
+    };
+    
+    if (!isLoading) {
+      fetchUserSettings();
+    }
+  }, [user, isLoading]);
+  
+  const handleFirmDetailChange = (field: string, value: string) => {
     setFirmDetails(prev => ({
       ...prev,
       [field]: value
     }));
   };
   
-  const handleNotificationChange = (field, value) => {
+  const handleNotificationChange = (field: string, value: boolean | string) => {
     setNotificationSettings(prev => ({
       ...prev,
       [field]: value
     }));
   };
   
-  const handleSaveChanges = () => {
-    toast({
-      title: "Changes saved",
-      description: "Your settings have been updated successfully",
-    });
+  const handleInvoiceSettingChange = (field: string, value: string | number) => {
+    setInvoiceSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleLabelSettingChange = (field: string, value: string | number | boolean) => {
+    setLabelSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handlePhotoSettingChange = (field: string, value: string) => {
+    setPhotoSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleSaveChanges = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to save settings.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Construct the settings payload
+      const settingsPayload = {
+        user_id: user.id,
+        // Firm Details
+        firm_name: firmDetails.name,
+        firm_phone: firmDetails.phone,
+        firm_address: firmDetails.address,
+        firm_gstin: firmDetails.gstin,
+        firm_email: firmDetails.email,
+        firm_website: firmDetails.website,
+        firm_establishment_date: firmDetails.establishmentDate,
+        // Notification Settings
+        notifications_email_enabled: notificationSettings.email,
+        notifications_push_enabled: notificationSettings.push,
+        notifications_sms_enabled: notificationSettings.sms,
+        notifications_whatsapp_enabled: notificationSettings.whatsapp,
+        notifications_frequency: notificationSettings.frequency,
+        notifications_quiet_hours_start: notificationSettings.quietHoursStart,
+        notifications_quiet_hours_end: notificationSettings.quietHoursEnd,
+        // Invoice Settings
+        invoice_default_prefix: invoiceSettings.defaultPrefix,
+        invoice_next_number: invoiceSettings.nextNumber,
+        invoice_default_notes: invoiceSettings.defaultNotes,
+        // Label Settings
+        label_type: labelSettings.type,
+        label_copies: labelSettings.copies,
+        label_include_product_name: labelSettings.includeProductName,
+        label_include_price: labelSettings.includePrice,
+        label_include_barcode: labelSettings.includeBarcode,
+        label_include_date: labelSettings.includeDate,
+        label_include_metal: labelSettings.includeMetal,
+        label_include_weight: labelSettings.includeWeight,
+        label_include_purity: labelSettings.includePurity,
+        label_include_qr_code: labelSettings.includeQrCode,
+        // Photo Settings
+        photo_compression_level: photoSettings.compressionLevel,
+      };
+      
+      // Save settings to Supabase
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert(settingsPayload, { onConflict: 'user_id' });
+      
+      if (error) {
+        console.error('Error saving settings:', error);
+        toast({
+          title: "Error saving settings",
+          description: "There was a problem saving your settings. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Changes saved",
+        description: "Your settings have been updated successfully",
+      });
+    } catch (error) {
+      console.error('Error in handleSaveChanges:', error);
+      toast({
+        title: "Error saving settings",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const handleBackup = () => {
@@ -416,7 +622,55 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <p className="text-sm text-muted-foreground">Invoice settings configuration coming soon...</p>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="invoicePrefix">Invoice Number Prefix</Label>
+                      <Input
+                        id="invoicePrefix"
+                        placeholder="e.g., INV-"
+                        value={invoiceSettings.defaultPrefix}
+                        onChange={(e) => handleInvoiceSettingChange("defaultPrefix", e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        This will be prepended to invoice numbers (e.g., INV-001)
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="nextInvoiceNumber">Next Invoice Number</Label>
+                      <Input
+                        id="nextInvoiceNumber"
+                        type="number"
+                        min="1"
+                        placeholder="1"
+                        value={invoiceSettings.nextNumber}
+                        onChange={(e) => handleInvoiceSettingChange("nextNumber", parseInt(e.target.value, 10) || 1)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        The next invoice will use this number and increment it
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultNotes">Default Invoice Notes</Label>
+                    <Textarea
+                      id="defaultNotes"
+                      placeholder="These notes will appear on all invoices by default"
+                      rows={4}
+                      value={invoiceSettings.defaultNotes}
+                      onChange={(e) => handleInvoiceSettingChange("defaultNotes", e.target.value)}
+                    />
+                  </div>
+                  
+                  <Button 
+                    type="button" 
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={handleSaveChanges}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Invoice Settings
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -438,7 +692,10 @@ export default function SettingsPage() {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="labelType">Label Type</Label>
-                        <Select>
+                        <Select 
+                          value={labelSettings.type}
+                          onValueChange={(value) => handleLabelSettingChange("type", value)}
+                        >
                           <SelectTrigger id="labelType">
                             <SelectValue placeholder="Standard (2.25&quot; x 1.25&quot;)" />
                           </SelectTrigger>
@@ -452,7 +709,10 @@ export default function SettingsPage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="numberOfLabels">Number of Labels</Label>
-                        <Select>
+                        <Select
+                          value={labelSettings.copies.toString()}
+                          onValueChange={(value) => handleLabelSettingChange("copies", parseInt(value, 10))}
+                        >
                           <SelectTrigger id="numberOfLabels">
                             <SelectValue placeholder="1" />
                           </SelectTrigger>
@@ -469,37 +729,85 @@ export default function SettingsPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-4">
                             <div className="flex items-center space-x-2">
-                              <Checkbox id="productName" defaultChecked />
+                              <Checkbox 
+                                id="productName" 
+                                checked={labelSettings.includeProductName}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeProductName", checked === true)
+                                }
+                              />
                               <Label htmlFor="productName">Product Name</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox id="price" defaultChecked />
+                              <Checkbox 
+                                id="price" 
+                                checked={labelSettings.includePrice}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includePrice", checked === true)
+                                }
+                              />
                               <Label htmlFor="price">Price</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox id="barcode" defaultChecked />
+                              <Checkbox 
+                                id="barcode" 
+                                checked={labelSettings.includeBarcode}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeBarcode", checked === true)
+                                }
+                              />
                               <Label htmlFor="barcode">Barcode</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox id="date" defaultChecked />
+                              <Checkbox 
+                                id="date" 
+                                checked={labelSettings.includeDate}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeDate", checked === true)
+                                }
+                              />
                               <Label htmlFor="date">Date</Label>
                             </div>
                           </div>
                           <div className="space-y-4">
                             <div className="flex items-center space-x-2">
-                              <Checkbox id="metal" defaultChecked />
+                              <Checkbox 
+                                id="metal" 
+                                checked={labelSettings.includeMetal}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeMetal", checked === true)
+                                }
+                              />
                               <Label htmlFor="metal">Metal</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox id="weight" defaultChecked />
+                              <Checkbox 
+                                id="weight" 
+                                checked={labelSettings.includeWeight}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeWeight", checked === true)
+                                }
+                              />
                               <Label htmlFor="weight">Weight</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox id="purity" defaultChecked />
+                              <Checkbox 
+                                id="purity" 
+                                checked={labelSettings.includePurity}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includePurity", checked === true)
+                                }
+                              />
                               <Label htmlFor="purity">Purity</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox id="qrCode" defaultChecked />
+                              <Checkbox 
+                                id="qrCode" 
+                                checked={labelSettings.includeQrCode}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeQrCode", checked === true)
+                                }
+                              />
                               <Label htmlFor="qrCode">QR Code</Label>
                             </div>
                           </div>
@@ -507,7 +815,10 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <Button className="w-full bg-primary hover:bg-primary/90">
+                    <Button 
+                      className="w-full bg-primary hover:bg-primary/90"
+                      onClick={handleSaveChanges}
+                    >
                       <Save className="mr-2 h-4 w-4" />
                       Save Configuration
                     </Button>
@@ -541,7 +852,10 @@ export default function SettingsPage() {
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="imageCompression">Image Compression Level</Label>
-                    <Select>
+                    <Select
+                      value={photoSettings.compressionLevel}
+                      onValueChange={(value) => handlePhotoSettingChange("compressionLevel", value)}
+                    >
                       <SelectTrigger id="imageCompression">
                         <SelectValue placeholder="Select compression level" />
                       </SelectTrigger>
@@ -557,7 +871,11 @@ export default function SettingsPage() {
                     </p>
                   </div>
 
-                  <Button type="button" className="bg-primary hover:bg-primary/90">
+                  <Button 
+                    type="button" 
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={handleSaveChanges}
+                  >
                     <Save className="mr-2 h-4 w-4" />
                     Save Settings
                   </Button>
