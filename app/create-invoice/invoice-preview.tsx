@@ -8,6 +8,7 @@ interface InvoiceItem {
   quantity: number
   weight: number
   pricePerGram: number
+  makingCharges: number
   total: number
 }
 
@@ -15,6 +16,13 @@ export interface InvoiceData {
   invoiceNumber: string
   date: string
   customerName: string
+  customerAddress?: string
+  customerPhone?: string
+  customerEmail?: string
+  firmName: string
+  firmAddress: string
+  firmPhone: string
+  firmGstin: string
   items: InvoiceItem[]
   makingCharges: number
   subtotal: number
@@ -33,10 +41,10 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
       <CardContent className="p-0">
         <div className="bg-primary/5 p-6">
           <div className="flex flex-col items-center justify-center space-y-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-primary">Sethiya Gold</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">{invoiceData.firmName}</h1>
             <p className="text-lg font-medium">Premium Jewelry</p>
-            <p className="text-sm text-muted-foreground">123 Jewelry Lane, Mumbai, Maharashtra, 400001</p>
-            <p className="text-sm text-muted-foreground">GSTIN: 27AABCT3518Q1ZV | Phone: +91 98765 43210</p>
+            <p className="text-sm text-muted-foreground">{invoiceData.firmAddress}</p>
+            <p className="text-sm text-muted-foreground">GSTIN: {invoiceData.firmGstin} | Phone: {invoiceData.firmPhone}</p>
           </div>
         </div>
 
@@ -45,6 +53,16 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
             <div>
               <p className="text-sm font-medium text-muted-foreground">Invoice To:</p>
               <p className="font-medium">{invoiceData.customerName}</p>
+              {invoiceData.customerAddress && (
+                <p className="text-sm text-muted-foreground">{invoiceData.customerAddress}</p>
+              )}
+              {(invoiceData.customerPhone || invoiceData.customerEmail) && (
+                <p className="text-sm text-muted-foreground">
+                  {invoiceData.customerPhone && `Phone: ${invoiceData.customerPhone}`}
+                  {invoiceData.customerPhone && invoiceData.customerEmail && " | "}
+                  {invoiceData.customerEmail && `Email: ${invoiceData.customerEmail}`}
+                </p>
+              )}
             </div>
             <div className="space-y-1 text-right">
               <div>
@@ -66,6 +84,7 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
                   <th className="p-2 text-sm font-medium">Qty</th>
                   <th className="p-2 text-sm font-medium">Weight (g)</th>
                   <th className="p-2 text-sm font-medium">Price/10g (₹)</th>
+                  <th className="p-2 text-sm font-medium">Making (₹)</th>
                   <th className="p-2 text-right text-sm font-medium">Amount (₹)</th>
                 </tr>
               </thead>
@@ -76,6 +95,7 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
                     <td className="p-2">{item.quantity}</td>
                     <td className="p-2">{item.weight.toFixed(2)}</td>
                     <td className="p-2">{item.pricePerGram.toFixed(2)}</td>
+                    <td className="p-2">{item.makingCharges.toFixed(2)}</td>
                     <td className="p-2 text-right">{item.total.toFixed(2)}</td>
                   </tr>
                 ))}
@@ -105,9 +125,9 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
           </div>
 
           <div className="mt-8 space-y-4 text-center text-sm">
-            <p className="font-medium">Thank you for shopping with Sethiya Gold!</p>
+            <p className="font-medium">Thank you for shopping with {invoiceData.firmName}!</p>
             <p className="text-muted-foreground">
-              For any queries related to this invoice, please contact us at info@sethiyagold.com
+              For any queries related to this invoice, please contact us at info@{invoiceData.firmName.toLowerCase().replace(/\s+/g, '')}.com
             </p>
             <p className="text-xs text-muted-foreground">
               This is a computer-generated invoice and does not require a physical signature.

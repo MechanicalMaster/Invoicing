@@ -1,3 +1,6 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { FileText, Home, Package, Plus, Search, Filter, Grid, List } from "lucide-react"
 
@@ -17,156 +20,288 @@ import { Badge } from "@/components/ui/badge"
 import { StockItemCard } from "@/app/stock/stock-item-card"
 import { StockItemTable } from "@/app/stock/stock-item-table"
 import { StockCategoryCard } from "@/app/stock/stock-category-card"
+import { useAuth } from "@/components/auth-provider"
+import supabase from "@/lib/supabase"
+import { toast } from "@/components/ui/use-toast"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Database } from "@/lib/database.types"
 
-// Mock data for jewelry categories
-const categories = [
-  {
-    id: "cat-1",
-    name: "Necklace",
-    count: 12,
-    icon: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "cat-2",
-    name: "Chain",
-    count: 18,
-    icon: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "cat-3",
-    name: "Ladies Ring",
-    count: 24,
-    icon: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "cat-4",
-    name: "Gents Ring",
-    count: 15,
-    icon: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "cat-5",
-    name: "Bangles",
-    count: 9,
-    icon: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "cat-6",
-    name: "Earrings",
-    count: 21,
-    icon: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "cat-7",
-    name: "Pendant",
-    count: 14,
-    icon: "/placeholder.svg?height=40&width=40",
-  },
-  {
-    id: "cat-8",
-    name: "Bracelet",
-    count: 11,
-    icon: "/placeholder.svg?height=40&width=40",
-  },
-]
+// Define types for stock items and categories
+type StockItem = {
+  id: string
+  name: string
+  category: string
+  material: string
+  purity: string
+  weight: number
+  makingCharges: number
+  price: number
+  stock: number
+  images: string[]
+  description: string
+  dateAdded: Date
+}
 
-// Mock data for jewelry items
-const items = [
-  {
-    id: "JWL-NK-001",
-    name: "Diamond Studded Gold Necklace",
-    category: "Necklace",
-    material: "Gold",
-    purity: "22K",
-    weight: 25.8,
-    makingCharges: 12500,
-    price: 145000,
-    stock: 2,
-    images: [
-      "/placeholder.svg?height=300&width=300",
-      "/placeholder.svg?height=300&width=300",
-      "/placeholder.svg?height=300&width=300",
-    ],
-    description: "Elegant diamond studded gold necklace with intricate design",
-    dateAdded: new Date("2023-04-15"),
-  },
-  {
-    id: "JWL-CH-002",
-    name: "Gold Chain with Pendant",
-    category: "Chain",
-    material: "Gold",
-    purity: "22K",
-    weight: 12.5,
-    makingCharges: 5000,
-    price: 78000,
-    stock: 3,
-    images: ["/placeholder.svg?height=300&width=300", "/placeholder.svg?height=300&width=300"],
-    description: "Classic gold chain with elegant pendant",
-    dateAdded: new Date("2023-04-18"),
-  },
-  {
-    id: "JWL-LR-003",
-    name: "Diamond Ladies Ring",
-    category: "Ladies Ring",
-    material: "Gold",
-    purity: "18K",
-    weight: 5.2,
-    makingCharges: 3500,
-    price: 45000,
-    stock: 5,
-    images: ["/placeholder.svg?height=300&width=300"],
-    description: "Beautiful diamond ring for ladies with modern design",
-    dateAdded: new Date("2023-04-20"),
-  },
-  {
-    id: "JWL-BG-004",
-    name: "Gold Bangles Set",
-    category: "Bangles",
-    material: "Gold",
-    purity: "22K",
-    weight: 30.5,
-    makingCharges: 15000,
-    price: 185000,
-    stock: 1,
-    images: [
-      "/placeholder.svg?height=300&width=300",
-      "/placeholder.svg?height=300&width=300",
-      "/placeholder.svg?height=300&width=300",
-    ],
-    description: "Set of 4 traditional gold bangles with intricate carving",
-    dateAdded: new Date("2023-04-22"),
-  },
-  {
-    id: "JWL-ER-005",
-    name: "Ruby Earrings",
-    category: "Earrings",
-    material: "Gold",
-    purity: "22K",
-    weight: 8.3,
-    makingCharges: 4500,
-    price: 65000,
-    stock: 2,
-    images: ["/placeholder.svg?height=300&width=300"],
-    description: "Elegant ruby earrings with gold setting",
-    dateAdded: new Date("2023-04-25"),
-  },
-  {
-    id: "JWL-GR-006",
-    name: "Men's Gold Ring",
-    category: "Gents Ring",
-    material: "Gold",
-    purity: "22K",
-    weight: 7.8,
-    makingCharges: 3800,
-    price: 52000,
-    stock: 4,
-    images: ["/placeholder.svg?height=300&width=300"],
-    description: "Classic men's gold ring with minimal design",
-    dateAdded: new Date("2023-04-28"),
-  },
-]
+type StockCategory = {
+  id: string
+  name: string
+  count: number
+  icon: string
+}
+
+type FilterCriteria = {
+  category: string
+  material: string
+}
 
 export default function StockPage() {
+  const { user } = useAuth()
+  const [stockItems, setStockItems] = useState<StockItem[]>([])
+  const [derivedCategories, setDerivedCategories] = useState<StockCategory[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterCriteria, setFilterCriteria] = useState<FilterCriteria>({
+    category: "all",
+    material: "all"
+  })
+
+  // Fetch stock data when component mounts or user changes
+  useEffect(() => {
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
+    
+    fetchStockData()
+  }, [user])
+
+  // Fetch stock data from Supabase
+  const fetchStockData = async () => {
+    if (!user) return
+    
+    try {
+      setIsLoading(true)
+      
+      const { data, error } = await supabase
+        .from('stock_items')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      
+      if (error) {
+        throw error
+      }
+      
+      if (data) {
+        const mappedItems = processStockData(data)
+        setStockItems(mappedItems)
+      }
+    } catch (error: any) {
+      console.error('Error fetching stock data:', error)
+      toast({
+        title: "Error fetching stock data",
+        description: error.message || "Could not load your stock items. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Process the stock data to derive categories and map for display
+  const processStockData = (items: Database['public']['Tables']['stock_items']['Row'][]) => {
+    // Create a map to count items by category
+    const categoryCount: Record<string, number> = {}
+    
+    // Process each item
+    const processedItems = items.map(item => {
+      // Count by category
+      if (categoryCount[item.category]) {
+        categoryCount[item.category]++
+      } else {
+        categoryCount[item.category] = 1
+      }
+      
+      // Map item to expected format for StockItemCard and StockItemTable
+      return {
+        id: item.item_number,
+        name: item.description || `${item.material} ${item.category}`, // Use description as name, or fallback
+        category: item.category,
+        material: item.material,
+        purity: item.purity || 'N/A',
+        weight: item.weight,
+        makingCharges: 0, // Not in schema, using default
+        price: item.purchase_price,
+        stock: 1, // Assuming each row is one item
+        images: item.image_urls && item.image_urls.length > 0 
+          ? item.image_urls 
+          : ["/placeholder.svg?height=300&width=300"],
+        description: item.description || `${item.material} ${item.category} (${item.purity || 'N/A'})`,
+        dateAdded: new Date(item.created_at)
+      } as StockItem
+    })
+    
+    // Convert categories to expected format for StockCategoryCard
+    const categories = Object.entries(categoryCount).map(([name, count]) => ({
+      id: name,
+      name,
+      count,
+      icon: "/placeholder.svg?height=40&width=40"
+    }))
+    
+    setDerivedCategories(categories)
+    return processedItems
+  }
+
+  // Apply search and filters to stock items
+  const filteredStockItems = useMemo(() => {
+    return stockItems.filter(item => {
+      // Apply search filter
+      const matchesSearch = searchQuery === "" ||
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase())
+      
+      // Apply category filter
+      const matchesCategory = filterCriteria.category === "all" || 
+        item.category === filterCriteria.category
+      
+      // Apply material filter
+      const matchesMaterial = filterCriteria.material === "all" ||
+        item.material.toLowerCase() === filterCriteria.material.toLowerCase()
+      
+      return matchesSearch && matchesCategory && matchesMaterial
+    })
+  }, [stockItems, searchQuery, filterCriteria])
+
+  // Extract unique materials for the material filter
+  const uniqueMaterials = useMemo(() => {
+    const materials = new Set(stockItems.map(item => item.material))
+    return Array.from(materials)
+  }, [stockItems])
+
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+  }
+
+  // Handle category filter change
+  const handleCategoryChange = (value: string) => {
+    setFilterCriteria(prev => ({
+      ...prev,
+      category: value
+    }))
+  }
+
+  // Handle material filter change
+  const handleMaterialChange = (value: string) => {
+    setFilterCriteria(prev => ({
+      ...prev,
+      material: value
+    }))
+  }
+
+  // Render loading skeletons for categories
+  const renderCategorySkeletons = () => {
+    return Array(8).fill(0).map((_, index) => (
+      <div key={`category-skeleton-${index}`} className="rounded-md border p-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </div>
+        <Skeleton className="mt-4 h-8 w-full" />
+      </div>
+    ))
+  }
+
+  // Render loading skeletons for item cards
+  const renderItemCardSkeletons = () => {
+    return Array(8).fill(0).map((_, index) => (
+      <div key={`item-skeleton-${index}`} className="rounded-md border">
+        <Skeleton className="aspect-square w-full" />
+        <div className="p-4 space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-3 w-4/5" />
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            <div>
+              <Skeleton className="h-2 w-10 mb-1" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div>
+              <Skeleton className="h-2 w-10 mb-1" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div>
+              <Skeleton className="h-2 w-10 mb-1" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <div>
+              <Skeleton className="h-2 w-10 mb-1" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+        </div>
+        <div className="border-t p-2 flex justify-between">
+          <Skeleton className="h-8 w-16" />
+          <Skeleton className="h-8 w-16" />
+        </div>
+      </div>
+    ))
+  }
+
+  // Render loading skeleton for table
+  const renderTableSkeleton = () => (
+    <div className="rounded-md border">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b bg-muted/50">
+              {Array(9).fill(0).map((_, index) => (
+                <th key={`th-${index}`} className="p-3">
+                  <Skeleton className="h-4 w-20" />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array(5).fill(0).map((_, rowIndex) => (
+              <tr key={`tr-${rowIndex}`} className="border-b">
+                {Array(9).fill(0).map((_, cellIndex) => (
+                  <td key={`td-${rowIndex}-${cellIndex}`} className="p-3">
+                    <Skeleton className="h-4 w-full" />
+                    {cellIndex === 0 && <Skeleton className="h-3 w-4/5 mt-1" />}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+
+  // Empty state component
+  const EmptyState = ({ message, showAddButton = true }: { message: string; showAddButton?: boolean }) => (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <Package className="h-16 w-16 text-muted-foreground/50 mb-4" />
+      <h3 className="text-lg font-medium">{message}</h3>
+      <p className="text-muted-foreground mb-6">
+        {showAddButton ? "Add your first item to start tracking your inventory" : "Try adjusting your filters or search query"}
+      </p>
+      {showAddButton && (
+        <Link href="/stock/add">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Item
+          </Button>
+        </Link>
+      )}
+    </div>
+  )
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
@@ -201,14 +336,22 @@ export default function StockPage() {
           <div className="flex flex-1 items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search items by name, ID, or description..." className="pl-10" />
+              <Input 
+                placeholder="Search items by name, ID, or description..." 
+                className="pl-10"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
             </div>
             <Button variant="outline" size="icon" title="Filter">
               <Filter className="h-4 w-4" />
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            <Select defaultValue="all">
+            <Select 
+              value={filterCriteria.category} 
+              onValueChange={handleCategoryChange}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
@@ -216,7 +359,7 @@ export default function StockPage() {
                 <SelectGroup>
                   <SelectLabel>Categories</SelectLabel>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
+                  {derivedCategories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
                     </SelectItem>
@@ -224,7 +367,10 @@ export default function StockPage() {
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <Select defaultValue="all">
+            <Select 
+              value={filterCriteria.material} 
+              onValueChange={handleMaterialChange}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by material" />
               </SelectTrigger>
@@ -232,10 +378,11 @@ export default function StockPage() {
                 <SelectGroup>
                   <SelectLabel>Materials</SelectLabel>
                   <SelectItem value="all">All Materials</SelectItem>
-                  <SelectItem value="gold">Gold</SelectItem>
-                  <SelectItem value="silver">Silver</SelectItem>
-                  <SelectItem value="platinum">Platinum</SelectItem>
-                  <SelectItem value="diamond">Diamond</SelectItem>
+                  {uniqueMaterials.map(material => (
+                    <SelectItem key={material} value={material.toLowerCase()}>
+                      {material}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -251,9 +398,15 @@ export default function StockPage() {
 
           <TabsContent value="categories" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {categories.map((category) => (
-                <StockCategoryCard key={category.id} category={category} />
-              ))}
+              {isLoading ? (
+                renderCategorySkeletons()
+              ) : derivedCategories.length > 0 ? (
+                derivedCategories.map((category) => (
+                  <StockCategoryCard key={category.id} category={category} />
+                ))
+              ) : (
+                <EmptyState message="No categories found" />
+              )}
             </div>
           </TabsContent>
 
@@ -263,7 +416,7 @@ export default function StockPage() {
                 <Package className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">All Items</h2>
                 <Badge variant="outline" className="ml-2">
-                  {items.length} items
+                  {filteredStockItems.length} items
                 </Badge>
               </div>
               <div className="flex items-center gap-2">
@@ -279,14 +432,32 @@ export default function StockPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {items.map((item) => (
-                <StockItemCard key={item.id} item={item} />
-              ))}
+              {isLoading ? (
+                renderItemCardSkeletons()
+              ) : filteredStockItems.length > 0 ? (
+                filteredStockItems.map((item) => (
+                  <StockItemCard key={item.id} item={item} />
+                ))
+              ) : (
+                <EmptyState 
+                  message={stockItems.length > 0 ? "No items match your filters" : "No items found"} 
+                  showAddButton={stockItems.length === 0}
+                />
+              )}
             </div>
           </TabsContent>
 
           <TabsContent value="table">
-            <StockItemTable items={items} />
+            {isLoading ? (
+              renderTableSkeleton()
+            ) : filteredStockItems.length > 0 ? (
+              <StockItemTable items={filteredStockItems} />
+            ) : (
+              <EmptyState 
+                message={stockItems.length > 0 ? "No items match your filters" : "No items found"} 
+                showAddButton={stockItems.length === 0}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </main>

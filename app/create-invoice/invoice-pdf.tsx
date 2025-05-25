@@ -40,8 +40,13 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 12,
   },
+  customerInfo: {
+    fontSize: 10,
+    color: "#78716C", // stone-500
+    marginTop: 2,
+  },
   table: {
-    display: "table",
+    // display: "table", - Removed due to type issue
     width: "100%",
     marginBottom: 20,
     borderStyle: "solid",
@@ -133,16 +138,25 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>Sethiya Gold</Text>
+          <Text style={styles.title}>{invoice.firmName}</Text>
           <Text style={styles.subtitle}>Premium Jewelry</Text>
-          <Text style={styles.subtitle}>123 Jewelry Lane, Mumbai, Maharashtra, 400001</Text>
-          <Text style={styles.subtitle}>GSTIN: 27AABCT3518Q1ZV | Phone: +91 98765 43210</Text>
+          <Text style={styles.subtitle}>{invoice.firmAddress}</Text>
+          <Text style={styles.subtitle}>GSTIN: {invoice.firmGstin} | Phone: {invoice.firmPhone}</Text>
         </View>
 
         <View style={styles.infoContainer}>
           <View style={styles.infoColumn}>
             <Text style={styles.infoLabel}>Invoice To:</Text>
             <Text style={styles.infoValue}>{invoice.customerName}</Text>
+            {invoice.customerAddress && (
+              <Text style={styles.customerInfo}>{invoice.customerAddress}</Text>
+            )}
+            {invoice.customerPhone && (
+              <Text style={styles.customerInfo}>Phone: {invoice.customerPhone}</Text>
+            )}
+            {invoice.customerEmail && (
+              <Text style={styles.customerInfo}>Email: {invoice.customerEmail}</Text>
+            )}
           </View>
           <View style={styles.infoColumn}>
             <Text style={styles.infoLabel}>Invoice Number:</Text>
@@ -154,17 +168,20 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
         <View style={styles.table}>
           <View style={styles.tableRow}>
-            <View style={[styles.tableHeaderCell, { width: "40%" }]}>
+            <View style={[styles.tableHeaderCell, { width: "30%" }]}>
               <Text>Item</Text>
             </View>
             <View style={[styles.tableHeaderCell, { width: "10%" }]}>
               <Text>Qty</Text>
             </View>
-            <View style={[styles.tableHeaderCell, { width: "15%" }]}>
+            <View style={[styles.tableHeaderCell, { width: "12%" }]}>
               <Text>Weight (g)</Text>
             </View>
-            <View style={[styles.tableHeaderCell, { width: "15%" }]}>
+            <View style={[styles.tableHeaderCell, { width: "13%" }]}>
               <Text>Price/10g (₹)</Text>
+            </View>
+            <View style={[styles.tableHeaderCell, { width: "15%" }]}>
+              <Text>Making (₹)</Text>
             </View>
             <View style={[styles.tableHeaderCell, { width: "20%" }]}>
               <Text>Amount (₹)</Text>
@@ -173,17 +190,20 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
           {invoice.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
-              <View style={[styles.tableCell, { width: "40%" }]}>
+              <View style={[styles.tableCell, { width: "30%" }]}>
                 <Text>{item.name}</Text>
               </View>
               <View style={[styles.tableCell, { width: "10%" }]}>
                 <Text>{item.quantity}</Text>
               </View>
-              <View style={[styles.tableCell, { width: "15%" }]}>
+              <View style={[styles.tableCell, { width: "12%" }]}>
                 <Text>{item.weight.toFixed(2)}</Text>
               </View>
-              <View style={[styles.tableCell, { width: "15%" }]}>
+              <View style={[styles.tableCell, { width: "13%" }]}>
                 <Text>{item.pricePerGram.toFixed(2)}</Text>
+              </View>
+              <View style={[styles.tableCell, { width: "15%" }]}>
+                <Text>{item.makingCharges.toFixed(2)}</Text>
               </View>
               <View style={[styles.tableCell, { width: "20%" }]}>
                 <Text>{item.total.toFixed(2)}</Text>
@@ -212,9 +232,9 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Thank you for shopping with Sethiya Gold!</Text>
+          <Text style={styles.footerText}>Thank you for shopping with {invoice.firmName}!</Text>
           <Text style={styles.footerText}>
-            For any queries related to this invoice, please contact us at info@sethiyagold.com
+            For any queries related to this invoice, please contact us at info@{invoice.firmName.toLowerCase().replace(/\s+/g, '')}.com
           </Text>
           <Text style={styles.footerSmallText}>
             This is a computer-generated invoice and does not require a physical signature.
