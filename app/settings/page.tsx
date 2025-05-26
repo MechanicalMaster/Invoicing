@@ -313,12 +313,11 @@ export default function SettingsPage() {
           </Link>
           <div className="ml-4">
             <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-            <p className="text-muted-foreground">Manage your firm settings, notifications, and backups</p>
           </div>
         </div>
         
         <Tabs defaultValue="firm-details" className="w-full">
-          <TabsList className="mb-4 grid w-full grid-cols-6">
+          <TabsList className="mb-4 flex overflow-x-auto whitespace-nowrap">
             <TabsTrigger value="firm-details" className="flex items-center gap-2">
               <Building className="h-4 w-4" />
               <span>Firm Details</span>

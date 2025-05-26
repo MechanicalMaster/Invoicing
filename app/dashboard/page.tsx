@@ -89,7 +89,7 @@ export default function DashboardPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="flex items-center gap-1">
                 <User className="h-4 w-4" />
-                <span>{user.email}</span>
+                <span>{user.user_metadata?.full_name || user.email}</span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
