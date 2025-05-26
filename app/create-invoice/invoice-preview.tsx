@@ -41,126 +41,135 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
   return (
     <Card className="overflow-hidden border-2" ref={ref}>
       <CardContent className="p-0">
-        <div className="bg-primary/5 p-6">
-          <div className="flex flex-col items-center justify-center space-y-2 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-primary">{invoiceData.firmName}</h1>
-            <p className="text-lg font-medium">Premium Jewelry</p>
-            <p className="text-sm text-muted-foreground">{invoiceData.firmAddress}</p>
-            <p className="text-sm text-muted-foreground">GSTIN: {invoiceData.firmGstin} | Phone: {invoiceData.firmPhone}</p>
+        {/* Header Section */}
+        <div className="relative bg-blue-50 p-6">
+          {/* Colored Band */}
+          <div className="absolute inset-0 bg-blue-50 z-0"></div>
+          
+          <div className="flex flex-col items-center justify-center space-y-2 text-center relative z-10">
+            <p className="text-center text-red-800 font-bold tracking-wide text-lg mb-1">TAX INVOICE</p>
+            <h1 className="text-3xl font-bold tracking-tight text-red-800 uppercase">{invoiceData.firmName}</h1>
+            <p className="text-sm font-medium uppercase tracking-wide">Premium Jewelry</p>
+            <p className="text-xs text-muted-foreground">{invoiceData.firmAddress}</p>
+            <p className="text-xs text-muted-foreground">GSTIN: {invoiceData.firmGstin} | HSN: 7113 | Phone: {invoiceData.firmPhone}</p>
+            
+            <div className="w-full flex justify-between py-2 mt-2 border-t border-b border-gray-400 text-sm">
+              <span>Bill No.: {invoiceData.invoiceNumber}</span>
+              <span>Date: {invoiceData.date}</span>
+            </div>
           </div>
         </div>
 
         <div className="p-6">
-          <div className="mb-6 flex flex-col justify-between gap-4 rounded-lg border bg-background p-4 sm:flex-row">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Invoice To:</p>
-              <p className="font-medium">{invoiceData.customerName}</p>
+          {/* Customer Info Section */}
+          <div className="mb-6 rounded-none border p-4">
+            <div className="grid grid-cols-6 gap-1">
+              <div className="col-span-1 font-medium text-sm">M/s.</div>
+              <div className="col-span-5 text-sm">{invoiceData.customerName}</div>
+              
               {invoiceData.customerAddress && (
-                <p className="text-sm text-muted-foreground">{invoiceData.customerAddress}</p>
+                <>
+                  <div className="col-span-1 font-medium text-sm">Address:</div>
+                  <div className="col-span-5 text-sm">{invoiceData.customerAddress}</div>
+                </>
               )}
-              {(invoiceData.customerPhone || invoiceData.customerEmail) && (
-                <p className="text-sm text-muted-foreground">
-                  {invoiceData.customerPhone && `Phone: ${invoiceData.customerPhone}`}
-                  {invoiceData.customerPhone && invoiceData.customerEmail && " | "}
-                  {invoiceData.customerEmail && `Email: ${invoiceData.customerEmail}`}
-                </p>
+              
+              {invoiceData.customerPhone && (
+                <>
+                  <div className="col-span-1 font-medium text-sm">Phone:</div>
+                  <div className="col-span-5 text-sm">{invoiceData.customerPhone}</div>
+                </>
               )}
-            </div>
-            <div className="space-y-1 text-right">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Invoice Number:</p>
-                <p className="font-medium">{invoiceData.invoiceNumber}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Date:</p>
-                <p className="font-medium">{invoiceData.date}</p>
-              </div>
+              
+              {invoiceData.customerEmail && (
+                <>
+                  <div className="col-span-1 font-medium text-sm">Email:</div>
+                  <div className="col-span-5 text-sm">{invoiceData.customerEmail}</div>
+                </>
+              )}
             </div>
           </div>
 
+          {/* Items Table */}
           <div className="mb-6 overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b text-left">
-                  <th className="p-2 text-sm font-medium">Item</th>
-                  <th className="p-2 text-sm font-medium">Qty</th>
-                  <th className="p-2 text-sm font-medium">Weight (g)</th>
-                  <th className="p-2 text-sm font-medium">Price/10g (₹)</th>
-                  <th className="p-2 text-sm font-medium">Making (₹)</th>
-                  <th className="p-2 text-right text-sm font-medium">Amount (₹)</th>
+                <tr className="bg-gray-200">
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "28%" }}>Item</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "8%" }}>Qty</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "12%" }}>Weight (g)</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "17%" }}>Price/10g (₹)</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "15%" }}>Making (₹)</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "20%" }}>Amount (₹)</th>
                 </tr>
               </thead>
               <tbody>
                 {invoiceData.items.map((item, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="p-2">{item.name}</td>
-                    <td className="p-2">{item.quantity}</td>
-                    <td className="p-2">{item.weight.toFixed(2)}</td>
-                    <td className="p-2">{item.pricePerGram.toFixed(2)}</td>
-                    <td className="p-2">{item.makingCharges.toFixed(2)}</td>
-                    <td className="p-2 text-right">{item.total.toFixed(2)}</td>
+                  <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <td className="border border-gray-400 p-2 text-sm">{item.name}</td>
+                    <td className="border border-gray-400 p-2 text-sm text-center">{item.quantity}</td>
+                    <td className="border border-gray-400 p-2 text-sm text-right">{item.weight.toFixed(3)}</td>
+                    <td className="border border-gray-400 p-2 text-sm text-right">{(item.pricePerGram * 10).toFixed(2)}</td>
+                    <td className="border border-gray-400 p-2 text-sm text-right">{item.makingCharges.toFixed(2)}</td>
+                    <td className="border border-gray-400 p-2 text-sm text-right">{item.total.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
+          {/* Summary Section */}
           <div className="mb-6 flex justify-end">
-            <div className="w-full max-w-xs space-y-2">
-              <div className="flex justify-between border-b py-1">
-                <span>Subtotal:</span>
+            <div className="w-1/2 space-y-1">
+              <div className="flex justify-between border-b py-1 text-sm">
+                <span>Subtotal (Items Value):</span>
                 <span>₹{invoiceData.subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-b py-1">
-                <span>Making Charges:</span>
+              <div className="flex justify-between border-b py-1 text-sm">
+                <span>Total Making Charges:</span>
                 <span>₹{invoiceData.makingCharges.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-b py-1">
+              <div className="flex justify-between border-b py-1 text-sm">
                 <span>GST ({invoiceData.gstPercentage}%):</span>
                 <span>₹{invoiceData.gstAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between py-1 font-bold">
-                <span>Total:</span>
+              <div className="flex justify-between border-t border-b border-black py-2 font-bold">
+                <span>GRAND TOTAL:</span>
                 <span>₹{invoiceData.total.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 space-y-4 text-center text-sm">
-            <p className="font-medium">Thank you for shopping with {invoiceData.firmName}!</p>
-            <p className="text-muted-foreground">
-              For any queries related to this invoice, please contact us at info@{invoiceData.firmName.toLowerCase().replace(/\s+/g, '')}.com
-            </p>
-          </div>
-          
-          {/* T&C Section */}
-          <div className="mt-8 border-t pt-6">
-            <h4 className="mb-2 font-medium">Terms & Conditions</h4>
+          {/* Footer Section */}
+          <div className="mt-8 border p-4">
+            <div className="border-t border-dotted mb-2"></div>
+            <p className="text-center font-bold mb-2">Thank You! Visit Again!</p>
+            
+            <h4 className="text-sm font-bold underline mb-2">Terms & Conditions:</h4>
             <ol className="text-xs text-muted-foreground pl-5 space-y-1">
               {TERMS_AND_CONDITIONS.map((term, index) => (
                 <li key={index}>{term}</li>
               ))}
             </ol>
             
-            {/* Agreement Line */}
-            <p className="mt-4 text-xs">{AGREEMENT_TEXT}</p>
+            <p className="mt-3 text-xs text-center">{AGREEMENT_TEXT}</p>
             
-            {/* Signature Section */}
             <div className="mt-6 grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm">Customer name: {invoiceData.customerName}</p>
-                <p className="text-sm mt-4">Customer signature: ______________________</p>
+                <p className="text-sm">Customer Signature:</p>
+                <div className="mt-8 border-t border-gray-400"></div>
+                <p className="text-sm">({invoiceData.customerName})</p>
               </div>
               <div className="text-right">
-                <p className="text-sm">For {invoiceData.firmName}</p>
-                <p className="text-sm mt-4">Authorised Signatory: ______________________</p>
+                <p className="text-sm">For {invoiceData.firmName}:</p>
+                <div className="mt-8 border-t border-gray-400"></div>
+                <p className="text-sm">(Authorised Signatory)</p>
               </div>
             </div>
             
-            {/* Bottom Line */}
-            <div className="mt-6 flex justify-between text-sm">
-              <span>E & OE</span>
-              <span>See overleaf</span>
+            <div className="mt-6 flex justify-between text-xs italic">
+              <span>E. & O. E.</span>
+              <span>This is a computer-generated invoice.</span>
             </div>
           </div>
         </div>

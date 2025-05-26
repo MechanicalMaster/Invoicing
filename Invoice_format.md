@@ -1,31 +1,44 @@
-import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer"
-import type { InvoiceData } from "@/app/create-invoice/invoice-preview"
-import { TERMS_AND_CONDITIONS, AGREEMENT_TEXT } from "@/lib/invoice-text"
+**Revised Step-by-Step Guide & Code Snippets**
 
-// Register standard PDF fonts
-Font.register({
-  family: 'Helvetica',
-  fonts: [
-    { src: 'Helvetica' },
-    { src: 'Helvetica-Bold', fontWeight: 'bold' },
-    { src: 'Helvetica-Oblique', fontStyle: 'italic' },
-    { src: 'Helvetica-BoldOblique', fontWeight: 'bold', fontStyle: 'italic' },
-  ]
-});
+**Step 0: Prepare `invoiceData` (Example for Clarity)**
 
-Font.register({
-  family: 'Times',
-  fonts: [
-    { src: 'Times-Roman' },
-    { src: 'Times-Bold', fontWeight: 'bold' },
-    { src: 'Times-Italic', fontStyle: 'italic' },
-    { src: 'Times-BoldItalic', fontWeight: 'bold', fontStyle: 'italic' },
-  ]
-});
+```javascript
+const invoiceDataExample = {
+  invoiceNumber: "SG-2024-001",
+  date: "26/05/2025", // DD/MM/YYYY format
+  customerName: "Ronak Sethiya",
+  customerAddress: "D 46, s 12, Amar Jyoti society sector 14 Vashi, Navi Mumbai",
+  customerPhone: "08454881721",
+  customerEmail: "ronakss.rj@gmail.com",
+  firmName: "Sethiya Gold", // This will be styled for prominence
+  firmAddress: "Premium Jewelry, Navi Mumbai",
+  firmPhone: "9867944634",
+  firmGstin: "27ABCDE1234F1Z5",
+  firmTagline: "Premium Jewelry Merchants", // English tagline
+  items: [
+    { name: "Chain", quantity: 1, weight: 12.90, pricePerGram: 6450.00, makingCharges: 900.00, total: 84105.00 },
+    { name: "Ring", quantity: 1, weight: 12.09, pricePerGram: 6450.00, makingCharges: 9000.00, total: 86980.50 },
+  ],
+  subtotal: 161185.50,
+  makingCharges: 9900.00,
+  gstPercentage: 3,
+  gstAmount: 5132.56,
+  total: 176218.07,
+};
+```
+
+**Step 1: Update Page Setup (No Custom Font Registration Needed)**
+
+In `app/create-invoice/invoice-pdf.tsx`:
+
+```tsx
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer"; // Removed Font
+import type { InvoiceData } from "@/app/create-invoice/invoice-preview";
+import { TERMS_AND_CONDITIONS, AGREEMENT_TEXT } from "@/lib/invoice-text";
 
 const MM_TO_PT = 2.8346;
 
-// Create styles
+// Define styles (or merge into your existing StyleSheet.create call)
 const styles = StyleSheet.create({
   page: {
     paddingTop: 10 * MM_TO_PT,
@@ -59,8 +72,7 @@ const styles = StyleSheet.create({
   },
   firmNameHeader: {
     textAlign: 'center',
-    fontFamily: 'Times',
-    fontWeight: 'bold',
+    fontFamily: 'Times-Bold', // Using Times-Bold for a more classic title feel
     fontSize: 28,
     color: '#B22222', // Firebrick red
     textTransform: 'uppercase',
@@ -125,6 +137,7 @@ const styles = StyleSheet.create({
 
   // Table Styles
   table: {
+    display: 'table',
     width: '100%',
     borderStyle: 'solid',
     borderWidth: 0.5,
@@ -226,18 +239,18 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     marginBottom: 5,
   },
-  footerTermsTitle: {
+  footerTermsTitle: { // Removed Devanagari font
     fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     textDecoration: 'underline',
     marginBottom: 3,
   },
-  footerTermItem: {
+  footerTermItem: { // Removed Devanagari font
     fontSize: 7.5,
     lineHeight: 1.3,
     marginBottom: 2,
   },
-  footerAgreement: {
+  footerAgreement: { // Removed Devanagari font
     fontSize: 7.5,
     textAlign: 'center',
     marginTop: 4,
@@ -262,18 +275,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     fontSize: 8,
-    fontFamily: 'Helvetica',
-    fontStyle: 'italic',
+    fontFamily: 'Helvetica-Italic', // Using italic for E&OE
     marginTop: 8,
   },
 });
 
-interface InvoicePDFProps {
-  invoice: InvoiceData;
-}
-
-// Create Document Component
-export function InvoicePDF({ invoice }: InvoicePDFProps) {
+export function InvoicePDF({ invoice }: { invoice: InvoiceData }) {
   return (
     <Document author={invoice.firmName} title={`Invoice ${invoice.invoiceNumber}`}>
       <Page size="A4" style={styles.page}>
@@ -284,7 +291,9 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           <Text style={styles.taxInvoiceTitle}>TAX INVOICE</Text>
 
           <Text style={styles.firmNameHeader}>{invoice.firmName}</Text>
-          <Text style={styles.firmTagline}>Premium Jewelry</Text>
+          {invoice.firmTagline && ( // Display English tagline if available
+            <Text style={styles.firmTagline}>{invoice.firmTagline}</Text>
+          )}
           <Text style={styles.firmAddressGstinHeader}>
             {invoice.firmAddress}
           </Text>
@@ -404,3 +413,35 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
     </Document>
   );
 }
+```
+
+**Explanation of Font-Related Changes:**
+
+1.  **No `Font.register()`:** All `Font.register` calls have been removed.
+2.  **Default `fontFamily`:**
+    *   `styles.page.fontFamily` is set to `'Helvetica'`.
+    *   Most text elements will inherit this or explicitly use `Helvetica` or its variants.
+3.  **Header Styling with Default Fonts:**
+    *   `taxInvoiceTitle`: Uses `Helvetica-Bold`.
+    *   `firmNameHeader`: Changed to `Times-Bold` to give it a slightly more traditional/serif look available by default, differentiating it from `Helvetica`. You can change this to `Helvetica-Bold` if you prefer consistency.
+    *   `firmTagline`, `firmAddressGstinHeader`, `telNumberHeader`: Use `Helvetica`.
+    *   Removed `firmNameDevanagari` style and its usage in JSX, as default fonts won't render Devanagari script correctly.
+4.  **Customer Info, Table, Summary with Default Fonts:**
+    *   Generally use `Helvetica`. Bold versions (`Helvetica-Bold`) are used for labels or headers where emphasis is needed (e.g., `customerInfoLabel`, `tableColHeader`, `grandTotalLabel`, `grandTotalValue`).
+5.  **Footer Styling with Default Fonts:**
+    *   `footerContainer` and its children primarily use `Helvetica`.
+    *   `footerThankYou`, `footerTermsTitle`: Use `Helvetica-Bold`.
+    *   `footerTermItem`, `footerAgreement`: Use `Helvetica` (your `lib/invoice-text.ts` contains English, which is fine).
+    *   `footerBottomText`: Uses `Helvetica-Italic` for "E. & O. E." for a common stylistic touch.
+
+**To Integrate into Your Project:**
+
+1.  **Replace `invoice-pdf.tsx`:**
+    *   Replace the content of your `app/create-invoice/invoice-pdf.tsx` with the code provided above.
+    *   Ensure the import path for `InvoiceData` and `lib/invoice-text` are correct.
+2.  **Verify `invoiceData`:**
+    *   Ensure the `invoiceData` prop passed to `InvoicePDF` has all the necessary fields. The `firmTagline` is now expected to be English. `firmNameDevanagari` is no longer used.
+3.  **Test and Iterate:**
+    *   Generate a PDF and compare it.
+    *   The main challenge will be achieving the desired visual density and hierarchy using only default font weights and styles. You may need to adjust `fontSize`, `padding`, `margin`, and `lineHeight` more carefully.
+    *   Pay attention to how `Times-Bold` looks for the main title versus `Helvetica-Bold`. `Times-Roman` is generally more condensed than `Helvetica` at the same point size, which might help with density if used for body text, but `Helvetica` is a very standard and clean choice.
