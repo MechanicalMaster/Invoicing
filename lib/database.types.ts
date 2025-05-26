@@ -11,321 +11,381 @@ export interface Database {
     Tables: {
       customers: {
         Row: {
-          id: string
-          created_at: string
-          name: string
-          email: string | null
-          phone: string | null
           address: string | null
-          notes: string | null
-          user_id: string
-          identity_type: 'pan_card' | 'aadhaar_card' | 'others' | 'none'
-          identity_reference: string | null
+          created_at: string | null
+          email: string | null
+          id: string
           identity_doc: string | null
-          referred_by: string | null
+          identity_reference: string | null
+          identity_type: string | null
+          name: string
+          notes: string | null
+          phone: string | null
           referral_notes: string | null
+          referred_by: string | null
+          user_id: string
         }
         Insert: {
-          id?: string
-          created_at?: string
-          name: string
-          email?: string | null
-          phone?: string | null
           address?: string | null
-          notes?: string | null
-          user_id: string
-          identity_type: 'pan_card' | 'aadhaar_card' | 'others' | 'none'
-          identity_reference?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
           identity_doc?: string | null
-          referred_by?: string | null
+          identity_reference?: string | null
+          identity_type?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
           referral_notes?: string | null
+          referred_by?: string | null
+          user_id: string
         }
         Update: {
-          id?: string
-          created_at?: string
-          name?: string
-          email?: string | null
-          phone?: string | null
           address?: string | null
-          notes?: string | null
-          user_id?: string
-          identity_type?: 'pan_card' | 'aadhaar_card' | 'others' | 'none'
-          identity_reference?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
           identity_doc?: string | null
-          referred_by?: string | null
+          identity_reference?: string | null
+          identity_type?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
           referral_notes?: string | null
+          referred_by?: string | null
+          user_id?: string
         }
+        Relationships: []
+      }
+      invoice_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          invoice_id: string
+          making_charges: number
+          name: string
+          price_per_gram: number
+          quantity: number
+          total: number
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invoice_id: string
+          making_charges: number
+          name: string
+          price_per_gram: number
+          quantity: number
+          total: number
+          user_id: string
+          weight: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invoice_id?: string
+          making_charges?: number
+          name?: string
+          price_per_gram?: number
+          quantity?: number
+          total?: number
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoices: {
         Row: {
+          created_at: string | null
+          customer_address_snapshot: string | null
+          customer_email_snapshot: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          firm_address_snapshot: string | null
+          firm_gstin_snapshot: string | null
+          firm_name_snapshot: string
+          firm_phone_snapshot: string | null
+          grand_total: number
+          gst_amount: number
+          gst_percentage: number
           id: string
-          created_at: string
-          updated_at: string
+          invoice_date: string
           invoice_number: string
-          customer_id: string
-          total_amount: number
-          paid_amount: number
-          due_amount: number
-          status: string
-          due_date: string | null
           notes: string | null
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          invoice_number: string
-          customer_id: string
-          total_amount: number
-          paid_amount: number
-          due_amount: number
           status: string
-          due_date?: string | null
-          notes?: string | null
-          user_id: string
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          updated_at?: string
-          invoice_number?: string
-          customer_id?: string
-          total_amount?: number
-          paid_amount?: number
-          due_amount?: number
-          status?: string
-          due_date?: string | null
-          notes?: string | null
-          user_id?: string
-        }
-      }
-      products: {
-        Row: {
-          id: string
-          created_at: string
-          name: string
-          description: string | null
-          price: number
-          category: string | null
-          sku: string | null
-          stock_quantity: number | null
+          subtotal: number
+          total_making_charges: number
+          updated_at: string | null
           user_id: string
         }
         Insert: {
+          created_at?: string | null
+          customer_address_snapshot?: string | null
+          customer_email_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot?: string | null
+          firm_address_snapshot?: string | null
+          firm_gstin_snapshot?: string | null
+          firm_name_snapshot: string
+          firm_phone_snapshot?: string | null
+          grand_total: number
+          gst_amount: number
+          gst_percentage: number
           id?: string
-          created_at?: string
-          name: string
-          description?: string | null
-          price: number
-          category?: string | null
-          sku?: string | null
-          stock_quantity?: number | null
+          invoice_date: string
+          invoice_number: string
+          notes?: string | null
+          status?: string
+          subtotal: number
+          total_making_charges: number
+          updated_at?: string | null
           user_id: string
         }
         Update: {
+          created_at?: string | null
+          customer_address_snapshot?: string | null
+          customer_email_snapshot?: string | null
+          customer_id?: string | null
+          customer_name_snapshot?: string
+          customer_phone_snapshot?: string | null
+          firm_address_snapshot?: string | null
+          firm_gstin_snapshot?: string | null
+          firm_name_snapshot?: string
+          firm_phone_snapshot?: string | null
+          grand_total?: number
+          gst_amount?: number
+          gst_percentage?: number
           id?: string
-          created_at?: string
-          name?: string
-          description?: string | null
-          price?: number
-          category?: string | null
-          sku?: string | null
-          stock_quantity?: number | null
+          invoice_date?: string
+          invoice_number?: string
+          notes?: string | null
+          status?: string
+          subtotal?: number
+          total_making_charges?: number
+          updated_at?: string | null
           user_id?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
-          id: string
-          updated_at: string | null
-          full_name: string | null
           avatar_url: string | null
-          phone_number: string | null
           email_address: string | null
+          full_name: string | null
+          id: string
+          phone_number: string | null
+          updated_at: string | null
         }
         Insert: {
-          id: string
-          updated_at?: string | null
-          full_name?: string | null
           avatar_url?: string | null
-          phone_number?: string | null
           email_address?: string | null
+          full_name?: string | null
+          id: string
+          phone_number?: string | null
+          updated_at?: string | null
         }
         Update: {
-          id?: string
-          updated_at?: string | null
-          full_name?: string | null
           avatar_url?: string | null
-          phone_number?: string | null
           email_address?: string | null
+          full_name?: string | null
+          id?: string
+          phone_number?: string | null
+          updated_at?: string | null
         }
+        Relationships: []
       }
       stock_items: {
         Row: {
-          id: string
-          user_id: string
-          item_number: string
           category: string
-          material: string
-          purity: string | null
-          weight: number
+          created_at: string
           description: string | null
-          supplier: string | null
+          id: string
+          image_urls: string[] | null
+          item_number: string
+          material: string
           purchase_date: string | null
           purchase_price: number
-          image_urls: string[]
-          created_at: string
+          purity: string | null
+          supplier: string | null
           updated_at: string
+          user_id: string
+          weight: number
         }
         Insert: {
-          id?: string
-          user_id: string
-          item_number: string
           category: string
-          material: string
-          purity?: string | null
-          weight: number
+          created_at?: string
           description?: string | null
-          supplier?: string | null
+          id?: string
+          image_urls?: string[] | null
+          item_number: string
+          material: string
           purchase_date?: string | null
           purchase_price: number
-          image_urls?: string[]
-          created_at?: string
+          purity?: string | null
+          supplier?: string | null
           updated_at?: string
+          user_id: string
+          weight: number
         }
         Update: {
-          id?: string
-          user_id?: string
-          item_number?: string
           category?: string
-          material?: string
-          purity?: string | null
-          weight?: number
+          created_at?: string
           description?: string | null
-          supplier?: string | null
+          id?: string
+          image_urls?: string[] | null
+          item_number?: string
+          material?: string
           purchase_date?: string | null
           purchase_price?: number
-          image_urls?: string[]
-          created_at?: string
+          purity?: string | null
+          supplier?: string | null
           updated_at?: string
+          user_id?: string
+          weight?: number
         }
+        Relationships: []
       }
       user_settings: {
         Row: {
-          user_id: string
-          updated_at: string
-          // Firm Details
+          firm_address: string | null
+          firm_email: string | null
+          firm_establishment_date: string | null
+          firm_gstin: string | null
           firm_name: string | null
           firm_phone: string | null
-          firm_address: string | null
-          firm_gstin: string | null
-          firm_email: string | null
           firm_website: string | null
-          firm_establishment_date: string | null
-          // Notification Settings
-          notifications_email_enabled: boolean | null
-          notifications_push_enabled: boolean | null
-          notifications_sms_enabled: boolean | null
-          notifications_whatsapp_enabled: boolean | null
-          notifications_frequency: Database['public']['Enums']['notification_frequency_enum'] | null
-          notifications_quiet_hours_start: string | null
-          notifications_quiet_hours_end: string | null
-          // Invoice Settings
+          invoice_custom_data: Json | null
+          invoice_default_notes: string | null
           invoice_default_prefix: string | null
           invoice_next_number: number | null
-          invoice_default_notes: string | null
-          invoice_custom_data: Json | null
-          // Label Settings
-          label_type: Database['public']['Enums']['label_type_enum'] | null
           label_copies: number | null
-          label_include_product_name: boolean | null
-          label_include_price: boolean | null
           label_include_barcode: boolean | null
           label_include_date: boolean | null
           label_include_metal: boolean | null
-          label_include_weight: boolean | null
+          label_include_price: boolean | null
+          label_include_product_name: boolean | null
           label_include_purity: boolean | null
           label_include_qr_code: boolean | null
-          // Photo Settings
-          photo_compression_level: Database['public']['Enums']['photo_compression_enum'] | null
+          label_include_weight: boolean | null
+          label_type: Database["public"]["Enums"]["label_type_enum"] | null
+          notifications_email_enabled: boolean | null
+          notifications_frequency:
+            | Database["public"]["Enums"]["notification_frequency_enum"]
+            | null
+          notifications_push_enabled: boolean | null
+          notifications_quiet_hours_end: string | null
+          notifications_quiet_hours_start: string | null
+          notifications_sms_enabled: boolean | null
+          notifications_whatsapp_enabled: boolean | null
+          photo_compression_level:
+            | Database["public"]["Enums"]["photo_compression_enum"]
+            | null
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          user_id: string
-          updated_at?: string
-          // Firm Details
+          firm_address?: string | null
+          firm_email?: string | null
+          firm_establishment_date?: string | null
+          firm_gstin?: string | null
           firm_name?: string | null
           firm_phone?: string | null
-          firm_address?: string | null
-          firm_gstin?: string | null
-          firm_email?: string | null
           firm_website?: string | null
-          firm_establishment_date?: string | null
-          // Notification Settings
-          notifications_email_enabled?: boolean | null
-          notifications_push_enabled?: boolean | null
-          notifications_sms_enabled?: boolean | null
-          notifications_whatsapp_enabled?: boolean | null
-          notifications_frequency?: Database['public']['Enums']['notification_frequency_enum'] | null
-          notifications_quiet_hours_start?: string | null
-          notifications_quiet_hours_end?: string | null
-          // Invoice Settings
+          invoice_custom_data?: Json | null
+          invoice_default_notes?: string | null
           invoice_default_prefix?: string | null
           invoice_next_number?: number | null
-          invoice_default_notes?: string | null
-          invoice_custom_data?: Json | null
-          // Label Settings
-          label_type?: Database['public']['Enums']['label_type_enum'] | null
           label_copies?: number | null
-          label_include_product_name?: boolean | null
-          label_include_price?: boolean | null
           label_include_barcode?: boolean | null
           label_include_date?: boolean | null
           label_include_metal?: boolean | null
-          label_include_weight?: boolean | null
+          label_include_price?: boolean | null
+          label_include_product_name?: boolean | null
           label_include_purity?: boolean | null
           label_include_qr_code?: boolean | null
-          // Photo Settings
-          photo_compression_level?: Database['public']['Enums']['photo_compression_enum'] | null
+          label_include_weight?: boolean | null
+          label_type?: Database["public"]["Enums"]["label_type_enum"] | null
+          notifications_email_enabled?: boolean | null
+          notifications_frequency?:
+            | Database["public"]["Enums"]["notification_frequency_enum"]
+            | null
+          notifications_push_enabled?: boolean | null
+          notifications_quiet_hours_end?: string | null
+          notifications_quiet_hours_start?: string | null
+          notifications_sms_enabled?: boolean | null
+          notifications_whatsapp_enabled?: boolean | null
+          photo_compression_level?:
+            | Database["public"]["Enums"]["photo_compression_enum"]
+            | null
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          user_id?: string
-          updated_at?: string
-          // Firm Details
+          firm_address?: string | null
+          firm_email?: string | null
+          firm_establishment_date?: string | null
+          firm_gstin?: string | null
           firm_name?: string | null
           firm_phone?: string | null
-          firm_address?: string | null
-          firm_gstin?: string | null
-          firm_email?: string | null
           firm_website?: string | null
-          firm_establishment_date?: string | null
-          // Notification Settings
-          notifications_email_enabled?: boolean | null
-          notifications_push_enabled?: boolean | null
-          notifications_sms_enabled?: boolean | null
-          notifications_whatsapp_enabled?: boolean | null
-          notifications_frequency?: Database['public']['Enums']['notification_frequency_enum'] | null
-          notifications_quiet_hours_start?: string | null
-          notifications_quiet_hours_end?: string | null
-          // Invoice Settings
+          invoice_custom_data?: Json | null
+          invoice_default_notes?: string | null
           invoice_default_prefix?: string | null
           invoice_next_number?: number | null
-          invoice_default_notes?: string | null
-          invoice_custom_data?: Json | null
-          // Label Settings
-          label_type?: Database['public']['Enums']['label_type_enum'] | null
           label_copies?: number | null
-          label_include_product_name?: boolean | null
-          label_include_price?: boolean | null
           label_include_barcode?: boolean | null
           label_include_date?: boolean | null
           label_include_metal?: boolean | null
-          label_include_weight?: boolean | null
+          label_include_price?: boolean | null
+          label_include_product_name?: boolean | null
           label_include_purity?: boolean | null
           label_include_qr_code?: boolean | null
-          // Photo Settings
-          photo_compression_level?: Database['public']['Enums']['photo_compression_enum'] | null
+          label_include_weight?: boolean | null
+          label_type?: Database["public"]["Enums"]["label_type_enum"] | null
+          notifications_email_enabled?: boolean | null
+          notifications_frequency?:
+            | Database["public"]["Enums"]["notification_frequency_enum"]
+            | null
+          notifications_push_enabled?: boolean | null
+          notifications_quiet_hours_end?: string | null
+          notifications_quiet_hours_start?: string | null
+          notifications_sms_enabled?: boolean | null
+          notifications_whatsapp_enabled?: boolean | null
+          photo_compression_level?:
+            | Database["public"]["Enums"]["photo_compression_enum"]
+            | null
+          updated_at?: string
+          user_id?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -335,9 +395,127 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      notification_frequency_enum: 'instant' | 'daily' | 'weekly'
-      label_type_enum: 'standard' | 'large' | 'small'
-      photo_compression_enum: 'none' | 'low' | 'medium' | 'high'
+      label_type_enum: "standard" | "large" | "small"
+      notification_frequency_enum: "instant" | "daily" | "weekly"
+      photo_compression_enum: "none" | "low" | "medium" | "high"
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
-} 
+}
+
+type DefaultSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      label_type_enum: ["standard", "large", "small"],
+      notification_frequency_enum: ["instant", "daily", "weekly"],
+      photo_compression_enum: ["none", "low", "medium", "high"],
+    },
+  },
+} as const 

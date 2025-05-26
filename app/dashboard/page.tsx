@@ -116,7 +116,6 @@ export default function DashboardPage() {
       <main className="flex flex-1 flex-col gap-6 p-6 md:gap-8 md:p-8">
         <div className="flex flex-col">
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome to Sethiya Gold</h1>
-          <p className="text-muted-foreground">Select an option to get started</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -127,7 +126,6 @@ export default function DashboardPage() {
                 <ShoppingBag className="h-5 w-5 text-primary" />
                 Sales
               </CardTitle>
-              <CardDescription>Manage invoices, bookings, and sales transactions</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="grid gap-4 md:grid-cols-3">
@@ -144,7 +142,6 @@ export default function DashboardPage() {
                       <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
                         <Plus className="h-8 w-8" />
                       </div>
-                      <p className="mt-2 text-sm text-muted-foreground">Create, preview, and print customer invoices</p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -162,7 +159,6 @@ export default function DashboardPage() {
                       <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
                         <FileText className="h-8 w-8" />
                       </div>
-                      <p className="mt-2 text-sm text-muted-foreground">Search, view, and print existing invoices</p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -180,7 +176,6 @@ export default function DashboardPage() {
                       <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
                         <Calendar className="h-8 w-8" />
                       </div>
-                      <p className="mt-2 text-sm text-muted-foreground">Create advance bookings with payment details</p>
                     </CardContent>
                   </Card>
                 </Link>
@@ -196,18 +191,14 @@ export default function DashboardPage() {
                   <Package className="h-5 w-5 text-primary" />
                   Stock
                 </CardTitle>
-                <CardDescription>Manage your inventory</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                  <Box className="h-12 w-12" />
-                </div>
-              </CardContent>
-              <CardFooter className="text-sm text-muted-foreground">
-                Track jewelry items, update prices, and manage stock
-              </CardFooter>
-            </Card>
-          </Link>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                    <Box className="h-12 w-12" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
 
           {/* Customer Tile */}
           <Link href="/customers" className="group">
@@ -217,16 +208,12 @@ export default function DashboardPage() {
                   <Users className="h-5 w-5 text-primary" />
                   Customer
                 </CardTitle>
-                <CardDescription>Manage customer relationships</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
                   <Users className="h-12 w-12" />
                 </div>
               </CardContent>
-              <CardFooter className="text-sm text-muted-foreground">
-                Add customers, view history, and manage details
-              </CardFooter>
             </Card>
           </Link>
 
@@ -238,16 +225,12 @@ export default function DashboardPage() {
                   <BarChart4 className="h-5 w-5 text-primary" />
                   Reports
                 </CardTitle>
-                <CardDescription>View business analytics</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
                   <BarChart4 className="h-12 w-12" />
                 </div>
               </CardContent>
-              <CardFooter className="text-sm text-muted-foreground">
-                Generate sales reports and analyze business performance
-              </CardFooter>
             </Card>
           </Link>
 
@@ -259,16 +242,12 @@ export default function DashboardPage() {
                   <Settings className="h-5 w-5 text-primary" />
                   Settings
                 </CardTitle>
-                <CardDescription>Configure system preferences</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
                   <Settings className="h-12 w-12" />
                 </div>
               </CardContent>
-              <CardFooter className="text-sm text-muted-foreground">
-                Manage firm details, notifications, and data backups
-              </CardFooter>
             </Card>
           </Link>
 

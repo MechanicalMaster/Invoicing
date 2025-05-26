@@ -63,7 +63,10 @@ export default function CreateInvoicePage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [isBrowser, setIsBrowser] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [invoicePrefix, setInvoicePrefix] = useState("INV-")
+  const [invoiceNextNumber, setInvoiceNextNumber] = useState(1)
   const [firmDetails, setFirmDetails] = useState({
     firmName: "Sethiya Gold",
     firmAddress: "123 Jewelry Lane, Mumbai, Maharashtra, 400001",
@@ -135,7 +138,7 @@ export default function CreateInvoicePage() {
     try {
       const { data, error } = await supabase
         .from('user_settings')
-        .select('firm_name, firm_address, firm_phone, firm_gstin, firm_email')
+        .select('firm_name, firm_address, firm_phone, firm_gstin, firm_email, invoice_default_prefix, invoice_next_number')
         .eq('user_id', user.id)
         .single()
       
@@ -151,6 +154,15 @@ export default function CreateInvoicePage() {
           firmPhone: data.firm_phone || "+91 98765 43210",
           firmGstin: data.firm_gstin || "27AABCT3518Q1ZV"
         })
+        
+        // Set invoice prefix and next number
+        if (data.invoice_default_prefix) {
+          setInvoicePrefix(data.invoice_default_prefix)
+        }
+        
+        if (data.invoice_next_number) {
+          setInvoiceNextNumber(data.invoice_next_number)
+        }
       }
     } catch (error: any) {
       console.error("Error fetching firm details:", error)
@@ -335,7 +347,112 @@ export default function CreateInvoicePage() {
       return
     }
     
-    setShowPreview(true)
+    // Save invoice to database before showing preview
+    saveInvoiceToDB().then(() => {
+      setShowPreview(true)
+    }).catch(error => {
+      toast({
+        title: "Error saving invoice",
+        description: error.message || "Failed to save the invoice to the database",
+        variant: "destructive",
+      })
+    })
+  }
+
+  // Save invoice data to Supabase
+  const saveInvoiceToDB = async () => {
+    if (!user) {
+      throw new Error("User not authenticated")
+    }
+    
+    try {
+      setIsSaving(true)
+      
+      const invoiceData = generateInvoiceData()
+      const calculatedTotals = calculateTotal()
+      const customer = formData.selectedCustomerDetails
+      
+      // Insert the main invoice record
+      const { data: invoiceRecord, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({
+          user_id: user.id,
+          customer_id: formData.selectedCustomerId !== "add_new_customer" ? formData.selectedCustomerId : null,
+          invoice_number: invoiceData.invoiceNumber,
+          invoice_date: new Date(formData.date).toISOString().split('T')[0],
+          status: 'finalized',
+          customer_name_snapshot: customer?.name || "Customer",
+          customer_address_snapshot: customer?.address || null,
+          customer_phone_snapshot: customer?.phone || null,
+          customer_email_snapshot: customer?.email || null,
+          firm_name_snapshot: firmDetails.firmName,
+          firm_address_snapshot: firmDetails.firmAddress,
+          firm_phone_snapshot: firmDetails.firmPhone,
+          firm_gstin_snapshot: firmDetails.firmGstin,
+          total_making_charges: Number(calculatedTotals.totalMakingCharges),
+          subtotal: Number(calculatedTotals.subtotal),
+          gst_percentage: formData.gst,
+          gst_amount: Number(calculatedTotals.gstAmount),
+          grand_total: Number(calculatedTotals.total)
+        })
+        .select('id')
+        .single()
+      
+      if (invoiceError) {
+        throw new Error(`Error saving invoice: ${invoiceError.message}`)
+      }
+      
+      if (!invoiceRecord) {
+        throw new Error("Failed to create invoice record")
+      }
+      
+      // Now insert all the invoice items
+      const invoiceItems = formData.items.map(item => ({
+        invoice_id: invoiceRecord.id,
+        user_id: user.id,
+        name: item.name,
+        quantity: item.quantity,
+        weight: item.weight,
+        price_per_gram: item.pricePerGram,
+        making_charges: item.makingCharges,
+        total: item.total
+      }))
+      
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(invoiceItems)
+      
+      if (itemsError) {
+        throw new Error(`Error saving invoice items: ${itemsError.message}`)
+      }
+      
+      // Update the invoice_next_number in user_settings
+      const { error: updateError } = await supabase
+        .from('user_settings')
+        .update({ invoice_next_number: invoiceNextNumber + 1 })
+        .eq('user_id', user.id)
+      
+      if (updateError) {
+        console.error(`Error updating invoice number: ${updateError.message}`)
+        // Continue anyway, as the invoice is already saved
+      } else {
+        // Update local state for next invoice
+        setInvoiceNextNumber(invoiceNextNumber + 1)
+      }
+      
+      toast({
+        title: "Invoice saved",
+        description: `Invoice ${invoiceData.invoiceNumber} has been successfully saved.`,
+        variant: "default",
+      })
+      
+      return invoiceRecord.id
+    } catch (error: any) {
+      console.error("Error saving invoice:", error)
+      throw error
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -363,9 +480,8 @@ export default function CreateInvoicePage() {
     
     return {
       invoiceNumber:
-        "INV-" +
-        Math.floor(Math.random() * 10000)
-          .toString()
+        invoicePrefix +
+        invoiceNextNumber.toString()
           .padStart(4, "0"),
       date: formatDate(formData.date),
       customerName: customer.name,
@@ -627,12 +743,24 @@ export default function CreateInvoicePage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline" type="button" onClick={() => router.push("/dashboard")}>
+                <Button variant="outline" type="button" onClick={() => router.push("/dashboard")} disabled={isSaving}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
-                  <Save className="mr-2 h-4 w-4" />
-                  Generate Invoice
+                <Button type="submit" className="bg-amber-600 hover:bg-amber-700" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <svg className="mr-2 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving Invoice...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Generate Invoice
+                    </>
+                  )}
                 </Button>
               </CardFooter>
             </form>

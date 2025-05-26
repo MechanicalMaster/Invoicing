@@ -50,7 +50,8 @@ const styles = StyleSheet.create({
   },
   taxInvoiceTitle: {
     textAlign: 'center',
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Helvetica',
+    fontWeight: 'bold',
     fontSize: 14,
     color: '#B22222', // Firebrick red
     letterSpacing: 1,
@@ -117,7 +118,8 @@ const styles = StyleSheet.create({
   },
   customerInfoLabel: {
     width: '18%',
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Helvetica',
+    fontWeight: 'bold',
   },
   customerInfoValue: {
     width: '82%',
@@ -145,7 +147,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     backgroundColor: '#E0E0E0',
     fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Helvetica',
+    fontWeight: 'bold',
     textAlign: 'center',
   },
   tableCol: {
@@ -200,8 +203,17 @@ const styles = StyleSheet.create({
     borderColor: '#000000',
     marginTop: 3,
   },
-  grandTotalLabel: { fontSize: 11, fontFamily: 'Helvetica-Bold' },
-  grandTotalValue: { fontSize: 11, textAlign: 'right', fontFamily: 'Helvetica-Bold' },
+  grandTotalLabel: { 
+    fontSize: 11, 
+    fontFamily: 'Helvetica', 
+    fontWeight: 'bold'
+  },
+  grandTotalValue: { 
+    fontSize: 11, 
+    textAlign: 'right', 
+    fontFamily: 'Helvetica',
+    fontWeight: 'bold'
+  },
 
   // Footer Styles
   footerContainer: {
@@ -223,12 +235,14 @@ const styles = StyleSheet.create({
   footerThankYou: {
     textAlign: 'center',
     fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Helvetica',
+    fontWeight: 'bold',
     marginBottom: 5,
   },
   footerTermsTitle: {
     fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Helvetica',
+    fontWeight: 'bold',
     textDecoration: 'underline',
     marginBottom: 3,
   },
