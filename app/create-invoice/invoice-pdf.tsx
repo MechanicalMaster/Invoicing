@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import type { InvoiceData } from "@/app/create-invoice/invoice-preview"
+import { TERMS_AND_CONDITIONS, AGREEMENT_TEXT } from "@/lib/invoice-text"
 
 // Create styles
 const styles = StyleSheet.create({
@@ -112,20 +113,64 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   footer: {
-    position: "absolute",
-    bottom: 30,
-    left: 30,
-    right: 30,
+    marginTop: 20,
     textAlign: "center",
   },
   footerText: {
     fontSize: 10,
     marginBottom: 5,
   },
-  footerSmallText: {
+  termsContainer: {
+    marginTop: 30,
+    borderTopWidth: 1,
+    borderTopColor: "#E7E5E4",
+    borderTopStyle: "solid",
+    paddingTop: 10,
+  },
+  termsTitle: {
+    fontSize: 10,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  termItem: {
+    fontSize: 8,
+    marginBottom: 3,
+  },
+  agreementText: {
+    fontSize: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  signatureContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 15,
+  },
+  signatureColumn: {
+    width: "48%",
+  },
+  signatureRight: {
+    alignItems: "flex-end",
+  },
+  signatureText: {
+    fontSize: 9,
+    marginBottom: 15,
+  },
+  bottomLine: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    fontSize: 8,
+  },
+  absoluteFooter: {
+    position: "absolute",
+    bottom: 30,
+    left: 30,
+    right: 30,
+    textAlign: "center",
     fontSize: 8,
     color: "#78716C", // stone-500
-  },
+  }
 })
 
 interface InvoicePDFProps {
@@ -236,10 +281,41 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           <Text style={styles.footerText}>
             For any queries related to this invoice, please contact us at info@{invoice.firmName.toLowerCase().replace(/\s+/g, '')}.com
           </Text>
-          <Text style={styles.footerSmallText}>
-            This is a computer-generated invoice and does not require a physical signature.
-          </Text>
         </View>
+        
+        {/* Terms and Conditions Section */}
+        <View style={styles.termsContainer}>
+          <Text style={styles.termsTitle}>Terms & Conditions</Text>
+          {TERMS_AND_CONDITIONS.map((term, index) => (
+            <Text key={index} style={styles.termItem}>{index + 1}. {term}</Text>
+          ))}
+          
+          {/* Agreement Line */}
+          <Text style={styles.agreementText}>{AGREEMENT_TEXT}</Text>
+          
+          {/* Signature Section */}
+          <View style={styles.signatureContainer}>
+            <View style={styles.signatureColumn}>
+              <Text style={styles.signatureText}>Customer name: {invoice.customerName}</Text>
+              <Text style={styles.signatureText}>Customer signature: ________________</Text>
+            </View>
+            <View style={[styles.signatureColumn, styles.signatureRight]}>
+              <Text style={styles.signatureText}>For {invoice.firmName}</Text>
+              <Text style={styles.signatureText}>Authorised Signatory: ________________</Text>
+            </View>
+          </View>
+          
+          {/* Bottom Line */}
+          <View style={styles.bottomLine}>
+            <Text>E & OE</Text>
+            <Text>See overleaf</Text>
+          </View>
+        </View>
+        
+        {/* Absolute Footer */}
+        <Text style={styles.absoluteFooter}>
+          This is a computer-generated invoice and does not require a physical signature.
+        </Text>
       </Page>
     </Document>
   )

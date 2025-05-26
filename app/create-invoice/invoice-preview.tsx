@@ -2,6 +2,8 @@
 
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card"
+import { TERMS_AND_CONDITIONS, AGREEMENT_TEXT } from "@/lib/invoice-text";
+import { Separator } from "@/components/ui/separator";
 
 interface InvoiceItem {
   name: string
@@ -129,9 +131,37 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
             <p className="text-muted-foreground">
               For any queries related to this invoice, please contact us at info@{invoiceData.firmName.toLowerCase().replace(/\s+/g, '')}.com
             </p>
-            <p className="text-xs text-muted-foreground">
-              This is a computer-generated invoice and does not require a physical signature.
-            </p>
+          </div>
+          
+          {/* T&C Section */}
+          <div className="mt-8 border-t pt-6">
+            <h4 className="mb-2 font-medium">Terms & Conditions</h4>
+            <ol className="text-xs text-muted-foreground pl-5 space-y-1">
+              {TERMS_AND_CONDITIONS.map((term, index) => (
+                <li key={index}>{term}</li>
+              ))}
+            </ol>
+            
+            {/* Agreement Line */}
+            <p className="mt-4 text-xs">{AGREEMENT_TEXT}</p>
+            
+            {/* Signature Section */}
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm">Customer name: {invoiceData.customerName}</p>
+                <p className="text-sm mt-4">Customer signature: ______________________</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm">For {invoiceData.firmName}</p>
+                <p className="text-sm mt-4">Authorised Signatory: ______________________</p>
+              </div>
+            </div>
+            
+            {/* Bottom Line */}
+            <div className="mt-6 flex justify-between text-sm">
+              <span>E & OE</span>
+              <span>See overleaf</span>
+            </div>
           </div>
         </div>
       </CardContent>
