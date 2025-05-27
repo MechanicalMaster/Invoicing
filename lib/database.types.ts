@@ -214,6 +214,65 @@ export interface Database {
         }
         Relationships: []
       }
+      purchase_invoices: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          invoice_date: string
+          invoice_file_url: string | null
+          invoice_number: string
+          notes: string | null
+          number_of_items: number | null
+          payment_status: string
+          purchase_number: string
+          status: string
+          supplier_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          invoice_date: string
+          invoice_file_url?: string | null
+          invoice_number: string
+          notes?: string | null
+          number_of_items?: number | null
+          payment_status?: string
+          purchase_number: string
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_file_url?: string | null
+          invoice_number?: string
+          notes?: string | null
+          number_of_items?: number | null
+          payment_status?: string
+          purchase_number?: string
+          status?: string
+          supplier_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_invoices_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_items: {
         Row: {
           category: string
@@ -262,6 +321,45 @@ export interface Database {
           updated_at?: string
           user_id?: string
           weight?: number
+        }
+        Relationships: []
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }

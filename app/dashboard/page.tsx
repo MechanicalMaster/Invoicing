@@ -20,6 +20,7 @@ import {
   Receipt,
   Calendar,
   Settings,
+  ShoppingCart,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -199,6 +200,23 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </Link>
+
+          {/* Purchases Tile */}
+          <Link href="/purchases" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5 text-primary" />
+                  Purchases
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <ShoppingCart className="h-12 w-12" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
 
           {/* Customer Tile */}
           <Link href="/customers" className="group">

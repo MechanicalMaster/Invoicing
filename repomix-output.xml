@@ -73,6 +73,14 @@ app/
   dashboard/
     layout.tsx
     page.tsx
+  invoices/
+    [id]/
+      edit/
+        page.tsx
+      loading.tsx
+      page.tsx
+    loading.tsx
+    page.tsx
   profile/
     page.tsx
   resources/
@@ -3538,279 +3546,6 @@ export default function Loading() {
 }
 </file>
 
-<file path="app/customers/page.tsx">
-"use client"
-
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { PlusCircle, Search, FileText, Home, Filter, ArrowUpDown } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { CustomerCard } from "@/app/customers/customer-card"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAuth } from "@/components/auth-provider"
-import supabase from "@/lib/supabase"
-import { toast } from "@/components/ui/use-toast"
-
-export default function CustomersPage() {
-  const { user } = useAuth();
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState("all");
-
-  // Fetch customers from Supabase
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      if (!user) return;
-
-      try {
-        setIsLoading(true);
-        
-        const { data, error } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          throw error;
-        }
-
-        setCustomers(data || []);
-      } catch (error: any) {
-        toast({
-          title: "Error loading customers",
-          description: error.message || "Could not load customers. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCustomers();
-  }, [user]);
-
-  // Filter and search customers
-  const filteredCustomers = customers.filter(customer => {
-    // Apply search filter
-    if (searchQuery && !customer.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-
-    // Apply category filter
-    if (filter === "referred" && !customer.referred_by) {
-      return false;
-    }
-
-    return true;
-  });
-
-  return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <FileText className="h-6 w-6 text-primary" />
-          <span className="text-xl">Ratna Invoicing</span>
-        </Link>
-        <nav className="ml-auto flex items-center gap-4">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm">
-              <Home className="mr-2 h-4 w-4" />
-              Dashboard
-            </Button>
-          </Link>
-        </nav>
-      </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Customer Management</h1>
-            <p className="text-muted-foreground">Manage your customer relationships and information</p>
-          </div>
-          <Link href="/customers/add">
-            <Button className="bg-primary hover:bg-primary/90">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Customer
-            </Button>
-          </Link>
-        </div>
-
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="flex flex-1 items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input 
-                placeholder="Search customers..." 
-                className="pl-10" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Button variant="outline" size="icon" title="Filter">
-              <Filter className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" title="Sort">
-              <ArrowUpDown className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select 
-              value={filter} 
-              onValueChange={setFilter}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Filter by</SelectLabel>
-                  <SelectItem value="all">All Customers</SelectItem>
-                  <SelectItem value="recent">Recent Customers</SelectItem>
-                  <SelectItem value="referred">Referred Customers</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <Tabs defaultValue="grid" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="grid">Grid View</TabsTrigger>
-            <TabsTrigger value="table">Table View</TabsTrigger>
-          </TabsList>
-          <TabsContent value="grid" className="space-y-4">
-            {isLoading ? (
-              <div className="flex h-40 items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                <p className="ml-2">Loading customers...</p>
-              </div>
-            ) : filteredCustomers.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredCustomers.map((customer) => (
-                  <CustomerCard 
-                    key={customer.id} 
-                    customer={{
-                      id: customer.id,
-                      name: customer.name,
-                      phone: customer.phone || "",
-                      email: customer.email || "",
-                      address: customer.address || "",
-                      identityType: customer.identity_type,
-                      identityNumber: customer.identity_reference || "",
-                      referredBy: customer.referred_by,
-                      createdAt: new Date(customer.created_at),
-                      // Mock last transaction data
-                      lastTransaction: {
-                        id: "INV-XXXX-XXX",
-                        date: new Date(),
-                        amount: 0,
-                        type: "N/A",
-                        description: "No transaction data"
-                      }
-                    }} 
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed">
-                <p className="text-muted-foreground">No customers found</p>
-                <Link href="/customers/add" className="mt-2">
-                  <Button variant="outline" size="sm">
-                    <PlusCircle className="mr-2 h-3 w-3" />
-                    Add Your First Customer
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </TabsContent>
-          <TabsContent value="table">
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="py-3 pl-4 pr-3 text-left text-sm font-medium">Name</th>
-                    <th className="px-3 py-3 text-left text-sm font-medium">Contact</th>
-                    <th className="px-3 py-3 text-left text-sm font-medium">ID Type</th>
-                    <th className="px-3 py-3 text-left text-sm font-medium">Created At</th>
-                    <th className="px-3 py-3 text-left text-sm font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center">
-                        <div className="flex items-center justify-center">
-                          <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-                          <p className="ml-2">Loading customers...</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredCustomers.length > 0 ? (
-                    filteredCustomers.map((customer) => (
-                      <tr key={customer.id} className="border-b">
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm">
-                          <div className="font-medium">{customer.name}</div>
-                          {customer.referred_by && <div className="text-xs text-muted-foreground">Referred by {customer.referred_by}</div>}
-                        </td>
-                        <td className="px-3 py-4 text-sm">
-                          <div>{customer.phone || "N/A"}</div>
-                          <div className="text-muted-foreground">{customer.email || "N/A"}</div>
-                        </td>
-                        <td className="px-3 py-4 text-sm">
-                          {customer.identity_type === 'pan_card' ? 'PAN Card' : 
-                           customer.identity_type === 'aadhaar_card' ? 'Aadhaar Card' : 
-                           customer.identity_type === 'others' ? 'Other ID' : 'None'}
-                          {customer.identity_reference && `: ${customer.identity_reference}`}
-                        </td>
-                        <td className="px-3 py-4 text-sm">
-                          {new Date(customer.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-3 py-4 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Link href={`/customers/${customer.id}`}>
-                              <Button variant="outline" size="sm">
-                                View
-                              </Button>
-                            </Link>
-                            <Link href={`/customers/${customer.id}/edit`}>
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-muted-foreground">
-                        No customers found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
-  )
-}
-</file>
-
 <file path="app/dashboard/layout.tsx">
 import type { Metadata } from "next"
 
@@ -3825,6 +3560,899 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return <>{children}</>
+}
+</file>
+
+<file path="app/invoices/[id]/edit/page.tsx">
+"use client"
+
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter, useParams } from "next/navigation"
+import { ArrowLeft, FileText } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/components/auth-provider"
+
+export default function EditInvoicePage() {
+  const router = useRouter()
+  const params = useParams()
+  const { user, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
+
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/")
+      toast({
+        title: "Authentication required",
+        description: "Please log in to edit this invoice",
+        variant: "destructive",
+      })
+    }
+  }, [user, authLoading, router, toast])
+
+  // Show loading state or nothing while checking authentication
+  if (authLoading || !user) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
+  }
+
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <FileText className="h-6 w-6 text-amber-500" />
+          <span className="text-xl">Sethiya Gold</span>
+        </Link>
+      </header>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center">
+          <Link href={`/invoices/${params.id}`}>
+            <Button variant="ghost" size="sm" className="gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Invoice
+            </Button>
+          </Link>
+          <h1 className="ml-4 text-xl font-semibold md:text-2xl">Edit Invoice</h1>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit Invoice - Coming Soon</CardTitle>
+            <CardDescription>
+              The edit invoice functionality is currently under development and will be available soon.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <p className="mb-6 text-center text-muted-foreground">
+              This feature is planned for a future update. For now, you can view and print invoices,
+              or create new ones.
+            </p>
+            <div className="flex gap-4">
+              <Link href={`/invoices/${params.id}`}>
+                <Button variant="outline">Return to Invoice</Button>
+              </Link>
+              <Link href="/invoices">
+                <Button>Back to Invoice List</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  )
+}
+</file>
+
+<file path="app/invoices/[id]/loading.tsx">
+import Link from "next/link"
+import { ArrowLeft, FileText } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+
+export default function Loading() {
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <FileText className="h-6 w-6 text-amber-500" />
+          <span className="text-xl">Sethiya Gold</span>
+        </Link>
+      </header>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center">
+          <Link href="/invoices">
+            <Button variant="ghost" size="sm" className="gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Invoices
+            </Button>
+          </Link>
+          <Skeleton className="ml-4 h-8 w-48" />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+        </div>
+        <Skeleton className="h-[70vh] w-full" />
+      </main>
+    </div>
+  )
+}
+</file>
+
+<file path="app/invoices/[id]/page.tsx">
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
+import { useRouter, useParams } from "next/navigation"
+import { useReactToPrint } from "react-to-print"
+import dynamic from "next/dynamic"
+import { ArrowLeft, Save, Printer, Edit, DollarSign } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/components/auth-provider"
+import supabase from "@/lib/supabase"
+import { InvoicePreview, InvoiceData } from "@/app/create-invoice/invoice-preview"
+
+// Dynamically import PDF components with ssr: false to ensure they only load on the client
+const PDFDownloadLinkWrapper = dynamic(
+  () => import("@/app/create-invoice/pdf-download-link-wrapper").then((mod) => mod.PDFDownloadLinkWrapper),
+  { ssr: false },
+)
+
+interface InvoiceItem {
+  id: string
+  name: string
+  quantity: number
+  weight: number
+  price_per_gram: number
+  making_charges: number
+  total: number
+}
+
+export default function InvoiceDetailPage() {
+  const router = useRouter()
+  const params = useParams()
+  const { user, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
+  
+  const [invoice, setInvoice] = useState<any>(null)
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [isBrowser, setIsBrowser] = useState(false)
+  
+  const invoiceRef = useRef<HTMLDivElement>(null)
+  
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/")
+      toast({
+        title: "Authentication required",
+        description: "Please log in to view this invoice",
+        variant: "destructive",
+      })
+    }
+  }, [user, authLoading, router, toast])
+  
+  // Set isBrowser to true once component mounts
+  useEffect(() => {
+    setIsBrowser(true)
+  }, [])
+  
+  // Fetch invoice data
+  useEffect(() => {
+    if (user && params.id) {
+      fetchInvoiceData()
+    }
+  }, [user, params.id])
+  
+  // Fetch invoice and its items
+  const fetchInvoiceData = async () => {
+    if (!user) return
+    
+    try {
+      setIsLoading(true)
+      
+      // Fetch invoice
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('id', params.id)
+        .eq('user_id', user.id)
+        .single()
+      
+      if (invoiceError) throw invoiceError
+      
+      if (!invoiceData) {
+        toast({
+          title: "Invoice not found",
+          description: "The requested invoice could not be found",
+          variant: "destructive",
+        })
+        router.push("/invoices")
+        return
+      }
+      
+      setInvoice(invoiceData)
+      
+      // Fetch invoice items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', params.id)
+        .order('created_at', { ascending: true })
+      
+      if (itemsError) throw itemsError
+      
+      setInvoiceItems(itemsData || [])
+    } catch (error: any) {
+      console.error("Error fetching invoice:", error)
+      toast({
+        title: "Error loading invoice",
+        description: error.message || "Could not load invoice details",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  // Mark invoice as paid
+  const markAsPaid = async () => {
+    if (!user || !invoice) return
+    
+    try {
+      setIsUpdating(true)
+      
+      const { error } = await supabase
+        .from('invoices')
+        .update({ status: 'paid' })
+        .eq('id', invoice.id)
+        .eq('user_id', user.id)
+      
+      if (error) throw error
+      
+      // Update local state
+      setInvoice({ ...invoice, status: 'paid' })
+      
+      toast({
+        title: "Invoice updated",
+        description: "Invoice has been marked as paid",
+        variant: "default",
+      })
+    } catch (error: any) {
+      console.error("Error updating invoice:", error)
+      toast({
+        title: "Update failed",
+        description: error.message || "Could not update invoice status",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+  
+  // Format invoice data for the preview component
+  const formatInvoiceDataForPreview = (): InvoiceData => {
+    return {
+      invoiceNumber: invoice.invoice_number,
+      date: formatDate(invoice.invoice_date),
+      customerName: invoice.customer_name_snapshot,
+      customerAddress: invoice.customer_address_snapshot,
+      customerPhone: invoice.customer_phone_snapshot,
+      customerEmail: invoice.customer_email_snapshot,
+      firmName: invoice.firm_name_snapshot,
+      firmAddress: invoice.firm_address_snapshot,
+      firmPhone: invoice.firm_phone_snapshot,
+      firmGstin: invoice.firm_gstin_snapshot,
+      items: invoiceItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        weight: item.weight,
+        pricePerGram: item.price_per_gram,
+        makingCharges: item.making_charges,
+        total: item.total,
+      })),
+      makingCharges: invoice.total_making_charges,
+      subtotal: invoice.subtotal,
+      gstPercentage: invoice.gst_percentage,
+      gstAmount: invoice.gst_amount,
+      total: invoice.grand_total,
+    }
+  }
+  
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+  
+  // Handle printing
+  const handlePrint = useReactToPrint({
+    // @ts-ignore - TypeScript definition seems incomplete
+    content: () => invoiceRef.current,
+    documentTitle: `Invoice-${invoice?.invoice_number}`,
+  })
+  
+  // Show loading state or nothing while checking authentication
+  if (authLoading || !user) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
+  }
+  
+  // Show loading state while fetching data
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen w-full flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+            <span className="text-xl">Sethiya Gold</span>
+          </Link>
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          <div className="flex items-center">
+            <Link href="/invoices">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Invoices
+              </Button>
+            </Link>
+            <Skeleton className="ml-4 h-8 w-48" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-28" />
+          </div>
+          <Skeleton className="h-[60vh] w-full" />
+        </main>
+      </div>
+    )
+  }
+  
+  // If no invoice found
+  if (!invoice) {
+    return (
+      <div className="flex min-h-screen w-full flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+            <span className="text-xl">Sethiya Gold</span>
+          </Link>
+        </header>
+        <main className="flex flex-1 flex-col items-center justify-center">
+          <h1 className="text-2xl font-bold">Invoice Not Found</h1>
+          <p className="mb-4 text-muted-foreground">The requested invoice could not be found</p>
+          <Link href="/invoices">
+            <Button>Back to Invoices</Button>
+          </Link>
+        </main>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <span className="text-xl">Sethiya Gold</span>
+        </Link>
+      </header>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center">
+          <Link href="/invoices">
+            <Button variant="ghost" size="sm" className="gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Invoices
+            </Button>
+          </Link>
+          <h1 className="ml-4 text-xl font-semibold md:text-2xl">
+            Invoice #{invoice.invoice_number}
+          </h1>
+        </div>
+        
+        <div className="flex flex-wrap justify-end gap-2">
+          {invoice.status !== 'paid' && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={isUpdating}>
+                  <DollarSign className="mr-2 h-4 w-4" />
+                  Mark as Paid
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Mark Invoice as Paid?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will update the invoice status to "Paid". This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={markAsPaid}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          
+          <Link href={`/invoices/${invoice.id}/edit`}>
+            <Button variant="outline">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Invoice
+            </Button>
+          </Link>
+          
+          {isBrowser && (
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="mr-2 h-4 w-4" />
+              Print Invoice
+            </Button>
+          )}
+          
+          {isBrowser && (
+            <PDFDownloadLinkWrapper
+              invoiceData={formatInvoiceDataForPreview()}
+              onStartGeneration={() => setIsGeneratingPDF(true)}
+              onFinishGeneration={() => setIsGeneratingPDF(false)}
+            />
+          )}
+        </div>
+        
+        <div ref={invoiceRef}>
+          <InvoicePreview invoiceData={formatInvoiceDataForPreview()} />
+        </div>
+      </main>
+    </div>
+  )
+}
+</file>
+
+<file path="app/invoices/loading.tsx">
+import Link from "next/link"
+import { FileText } from "lucide-react"
+
+import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+
+export default function Loading() {
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <FileText className="h-6 w-6 text-amber-500" />
+          <span className="text-xl">Sethiya Gold</span>
+        </Link>
+      </header>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-10" />
+        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-6 w-36 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array(5).fill(0).map((_, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-4">
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-5 w-24" />
+                      <Skeleton className="h-5 w-20" />
+                      <Skeleton className="h-5 w-16" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-9 w-16" />
+                    <Skeleton className="h-9 w-16" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  )
+}
+</file>
+
+<file path="app/invoices/page.tsx">
+"use client"
+
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Calendar, FileText, Printer, Search, PlusCircle, ChevronLeft, ChevronRight, ArrowDownUp } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/components/auth-provider"
+import supabase from "@/lib/supabase"
+
+interface Invoice {
+  id: string
+  invoice_number: string
+  customer_name_snapshot: string
+  invoice_date: string
+  grand_total: number
+  status: string
+}
+
+export default function InvoicesPage() {
+  const router = useRouter()
+  const { user, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
+
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [pageSize] = useState(10)
+
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/")
+      toast({
+        title: "Authentication required",
+        description: "Please log in to view invoices",
+        variant: "destructive",
+      })
+    }
+  }, [user, authLoading, router, toast])
+
+  // Fetch invoices when dependencies change
+  useEffect(() => {
+    if (user) {
+      fetchInvoices()
+    }
+  }, [user, currentPage, searchQuery, startDate, endDate, sortDirection])
+
+  // Function to fetch invoices
+  const fetchInvoices = async () => {
+    if (!user) return
+
+    try {
+      setIsLoading(true)
+
+      // Calculate pagination range
+      const from = (currentPage - 1) * pageSize
+      const to = from + pageSize - 1
+
+      // Start building the query
+      let query = supabase
+        .from('invoices')
+        .select('id, invoice_number, customer_name_snapshot, invoice_date, grand_total, status', { count: 'exact' })
+        .eq('user_id', user.id)
+        .order('invoice_date', { ascending: sortDirection === 'asc' })
+        .range(from, to)
+
+      // Apply search filter if provided
+      if (searchQuery) {
+        query = query.ilike('customer_name_snapshot', `%${searchQuery}%`)
+      }
+
+      // Apply date filters if provided
+      if (startDate) {
+        query = query.gte('invoice_date', startDate)
+      }
+      if (endDate) {
+        query = query.lte('invoice_date', endDate)
+      }
+
+      // Execute the query
+      const { data, error, count } = await query
+
+      if (error) throw error
+
+      setInvoices(data || [])
+      setTotalCount(count || 0)
+    } catch (error: any) {
+      console.error("Error fetching invoices:", error)
+      toast({
+        title: "Failed to load invoices",
+        description: error.message || "An error occurred while loading invoices",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+
+  // Format currency for display
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2,
+    }).format(amount)
+  }
+
+  // Toggle sort direction
+  const toggleSortDirection = () => {
+    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+  }
+
+  // Calculate total pages
+  const totalPages = Math.ceil(totalCount / pageSize)
+
+  // Go to previous page
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1)
+    }
+  }
+
+  // Go to next page
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1)
+    }
+  }
+
+  // Status badge component
+  const StatusBadge = ({ status }: { status: string }) => {
+    let bgColor = "bg-gray-100"
+    let textColor = "text-gray-800"
+
+    switch (status.toLowerCase()) {
+      case 'paid':
+        bgColor = "bg-green-100"
+        textColor = "text-green-800"
+        break
+      case 'pending':
+        bgColor = "bg-yellow-100"
+        textColor = "text-yellow-800"
+        break
+      case 'cancelled':
+        bgColor = "bg-red-100"
+        textColor = "text-red-800"
+        break
+      case 'finalized':
+        bgColor = "bg-blue-100"
+        textColor = "text-blue-800"
+        break
+    }
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}>
+        {status}
+      </span>
+    )
+  }
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen w-full flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+            <FileText className="h-6 w-6 text-amber-500" />
+            <span className="text-xl">Sethiya Gold</span>
+          </Link>
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <Skeleton className="h-10 flex-1" />
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-10 w-20" />
+          </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-6 w-36" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Array(5).fill(0).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-14 flex-1" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    )
+  }
+
+  // Show loading state or nothing while checking authentication
+  if (authLoading || !user) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
+  }
+
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <FileText className="h-6 w-6 text-amber-500" />
+          <span className="text-xl">Sethiya Gold</span>
+        </Link>
+      </header>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
+          <Link href="/create-invoice">
+            <Button className="bg-amber-600 hover:bg-amber-700">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create New Invoice
+            </Button>
+          </Link>
+        </div>
+
+        {/* Search and Filter Controls */}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search by customer name..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              className="w-40"
+              placeholder="Start Date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <span>to</span>
+            <Input
+              type="date"
+              className="w-40"
+              placeholder="End Date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleSortDirection}
+            title={`Sort by date ${sortDirection === 'asc' ? 'oldest first' : 'newest first'}`}
+          >
+            <ArrowDownUp className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Invoices Table */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Invoice List</CardTitle>
+            <CardDescription>
+              Showing {invoices.length} of {totalCount} invoices
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {invoices.length === 0 ? (
+              <div className="flex h-24 items-center justify-center rounded-md border border-dashed">
+                <p className="text-muted-foreground">No invoices found</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Invoice Number</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                      <TableCell>{invoice.customer_name_snapshot}</TableCell>
+                      <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
+                      <TableCell>{formatCurrency(invoice.grand_total)}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={invoice.status} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Link href={`/invoices/${invoice.id}`}>
+                            <Button variant="outline" size="sm">
+                              View
+                            </Button>
+                          </Link>
+                          <Link href={`/invoices/${invoice.id}/edit`}>
+                            <Button variant="outline" size="sm">
+                              Edit
+                            </Button>
+                          </Link>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+          {totalPages > 1 && (
+            <CardFooter className="flex items-center justify-between border-t p-4">
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="sr-only">Previous Page</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  <span className="sr-only">Next Page</span>
+                </Button>
+              </div>
+            </CardFooter>
+          )}
+        </Card>
+      </main>
+    </div>
+  )
 }
 </file>
 
@@ -6511,7 +7139,7 @@ export function StockItemTable({ items }: StockItemTableProps) {
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 230 48% 25%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -6520,15 +7148,15 @@ export function StockItemTable({ items }: StockItemTableProps) {
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 35 91% 52%;
+    --accent-foreground: 35 100% 15%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 230 48% 25%;
 
     --radius: 0.5rem;
 
@@ -6543,8 +7171,10 @@ export function StockItemTable({ items }: StockItemTableProps) {
   }
 
   [data-theme="slate"] {
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 230 48% 25%;
     --primary-foreground: 210 40% 98%;
+    --accent: 35 91% 52%;
+    --accent-foreground: 35 100% 15%;
   }
 
   [data-theme="zinc"] {
@@ -6598,33 +7228,33 @@ export function StockItemTable({ items }: StockItemTableProps) {
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 230 25% 12%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 230 25% 14%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 230 25% 14%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 230 44% 64%;
+    --primary-foreground: 230 25% 10%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 230 25% 20%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 230 25% 20%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 35 91% 52%;
+    --accent-foreground: 35 100% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 230 25% 25%;
+    --input: 230 25% 25%;
+    --ring: 35 91% 52%;
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -6643,6 +7273,27 @@ export function StockItemTable({ items }: StockItemTableProps) {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Animation utilities */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.8s ease-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
 }
 </file>
@@ -6687,14 +7338,24 @@ export default function RootLayout({
 <file path="app/page.tsx">
 import Link from "next/link"
 import type { Metadata } from "next"
-import { ArrowRight, ChevronRight } from "lucide-react"
+import { 
+  ArrowRight, 
+  ChevronRight, 
+  Package, 
+  Users, 
+  FileText, 
+  DollarSign, 
+  BarChart4, 
+  CreditCard, 
+  Gem
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { AuthModal } from "@/app/components/auth-modal"
 
 export const metadata: Metadata = {
-  title: "Sethiya Gold - Premium Indian Jewelry",
-  description: "Exquisite handcrafted jewelry with traditional Indian craftsmanship",
+  title: "Sethiya Gold - Premium Jewelry Management",
+  description: "Streamline your jewelry business with our comprehensive management solution",
 }
 
 export default function LandingPage() {
@@ -6702,40 +7363,35 @@ export default function LandingPage() {
     <div className="flex min-h-screen w-full flex-col">
       {/* Hero Section */}
       <section className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden">
-        {/* Background Image with Overlay */}
+        {/* Background with Gradient */}
         <div className="absolute inset-0 z-0">
-          <div
-            className="h-full w-full bg-cover bg-center"
-            style={{
-              backgroundImage: "url('/placeholder.svg?height=1080&width=1920')",
-              backgroundPosition: "center 30%",
-            }}
-          >
-            <div className="h-full w-full bg-gradient-to-r from-black/70 via-black/50 to-black/70"></div>
+          <div className="h-full w-full bg-gradient-to-br from-primary/90 via-primary/80 to-primary/70">
+            <div className="absolute inset-0 opacity-10 mix-blend-overlay" 
+                 style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E')" 
+            }}></div>
           </div>
         </div>
 
         {/* Hero Content */}
         <div className="container relative z-10 mx-auto flex flex-col items-center px-4 text-center">
-          <div className="mb-2 inline-block rounded-full bg-amber-500/20 px-4 py-1.5 text-sm font-medium text-amber-300">
-            Premium Jewelry Management
+          <div className="mb-2 inline-block rounded-full bg-accent/20 px-4 py-1.5 text-sm font-medium text-accent animate-fade-in">
+            Premium Jewelry Management Solution
           </div>
-          <h1 className="mb-6 font-serif text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
+          <h1 className="mb-6 font-serif text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl animate-fade-in" style={{animationDelay: "0.2s"}}>
             <span className="block">Sethiya Gold</span>
-            <span className="mt-2 block text-amber-400">Timeless Elegance, Modern Management</span>
+            <span className="mt-2 block text-accent">Streamline Your Jewelry Business</span>
           </h1>
-          <p className="mb-8 max-w-2xl text-lg text-gray-300">
-            Experience the perfect blend of traditional craftsmanship and modern inventory management. Our system helps
-            you manage your premium jewelry business with elegance and efficiency.
+          <p className="mb-8 max-w-2xl text-lg text-gray-200 animate-fade-in animate-slide-up" style={{animationDelay: "0.3s"}}>
+            The ultimate management tool for Indian jewelers. Effortlessly handle invoicing, inventory, and customer relationships with our comprehensive suite of tools.
           </p>
-          <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
+          <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0 animate-fade-in" style={{animationDelay: "0.4s"}}>
             <AuthModal>
-              <Button size="lg" className="bg-amber-600 hover:bg-amber-700">
+              <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
                 Get Started <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </AuthModal>
             <Link href="#features">
-              <Button variant="outline" size="lg" className="border-amber-500 text-amber-300 hover:bg-amber-950/50">
+              <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
                 Explore Features <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -6749,139 +7405,66 @@ export default function LandingPage() {
       {/* Features Section */}
       <section id="features" className="py-16">
         <div className="container mx-auto px-4">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 font-serif text-3xl font-bold text-amber-800 md:text-4xl">Crafted for Excellence</h2>
+          <div className="mb-12 text-center animate-fade-in">
+            <h2 className="mb-4 font-serif text-3xl font-bold text-primary md:text-4xl">
+              Powerful Features, Seamlessly Integrated
+            </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
-              Our jewelry management system is designed with the same attention to detail that goes into crafting fine
-              jewelry.
+              Our jewelry management system combines powerful tools designed specifically for Indian jewelry businesses.
             </p>
           </div>
 
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {/* Feature 1 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm transition-all hover:border-amber-200 hover:shadow-md">
-              <div className="mb-4 inline-flex rounded-full bg-amber-100 p-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 text-amber-600"
-                >
-                  <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l4-2.18L12 3z" />
-                  <path d="M12 12l-3-1.6v3.6l3 1.6 3-1.6v-3.6L12 12z" />
-                </svg>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/30 hover:shadow-md animate-fade-in animate-slide-up" style={{animationDelay: "0.1s"}}>
+              <div className="mb-4 inline-flex rounded-full bg-primary/10 p-3">
+                <Package className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-amber-800">Premium Inventory Management</h3>
+              <h3 className="mb-2 text-xl font-semibold text-primary">Premium Inventory Management</h3>
               <p className="text-muted-foreground">
                 Track your precious inventory with precision. Manage gold, diamonds, and gemstones with ease.
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm transition-all hover:border-amber-200 hover:shadow-md">
-              <div className="mb-4 inline-flex rounded-full bg-amber-100 p-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 text-amber-600"
-                >
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/30 hover:shadow-md animate-fade-in animate-slide-up" style={{animationDelay: "0.2s"}}>
+              <div className="mb-4 inline-flex rounded-full bg-primary/10 p-3">
+                <Users className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-amber-800">Customer Relationship</h3>
+              <h3 className="mb-2 text-xl font-semibold text-primary">Customer Relationship</h3>
               <p className="text-muted-foreground">
                 Build lasting relationships with your clients. Track preferences, purchases, and special occasions.
               </p>
             </div>
 
             {/* Feature 3 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm transition-all hover:border-amber-200 hover:shadow-md">
-              <div className="mb-4 inline-flex rounded-full bg-amber-100 p-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 text-amber-600"
-                >
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <path d="M14 2v6h6" />
-                  <path d="M16 13H8" />
-                  <path d="M16 17H8" />
-                  <path d="M10 9H8" />
-                </svg>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/30 hover:shadow-md animate-fade-in animate-slide-up" style={{animationDelay: "0.3s"}}>
+              <div className="mb-4 inline-flex rounded-full bg-primary/10 p-3">
+                <FileText className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-amber-800">Professional Invoicing</h3>
+              <h3 className="mb-2 text-xl font-semibold text-primary">Professional Invoicing</h3>
               <p className="text-muted-foreground">
                 Create elegant invoices that reflect your brand's premium quality. GST-compliant and customizable.
               </p>
             </div>
 
             {/* Feature 4 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm transition-all hover:border-amber-200 hover:shadow-md">
-              <div className="mb-4 inline-flex rounded-full bg-amber-100 p-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 text-amber-600"
-                >
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/30 hover:shadow-md animate-fade-in animate-slide-up" style={{animationDelay: "0.4s"}}>
+              <div className="mb-4 inline-flex rounded-full bg-primary/10 p-3">
+                <DollarSign className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-amber-800">Real-time Gold Rates</h3>
+              <h3 className="mb-2 text-xl font-semibold text-primary">Real-time Gold Rates</h3>
               <p className="text-muted-foreground">
                 Stay updated with the latest gold rates. Automatically calculate prices based on current market values.
               </p>
             </div>
 
             {/* Feature 5 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm transition-all hover:border-amber-200 hover:shadow-md">
-              <div className="mb-4 inline-flex rounded-full bg-amber-100 p-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 text-amber-600"
-                >
-                  <path d="M3 3v18h18" />
-                  <path d="m19 9-5 5-4-4-3 3" />
-                </svg>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/30 hover:shadow-md animate-fade-in animate-slide-up" style={{animationDelay: "0.5s"}}>
+              <div className="mb-4 inline-flex rounded-full bg-primary/10 p-3">
+                <BarChart4 className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-amber-800">Business Analytics</h3>
+              <h3 className="mb-2 text-xl font-semibold text-primary">Business Analytics</h3>
               <p className="text-muted-foreground">
                 Gain insights into your business performance. Track sales trends, popular items, and customer
                 preferences.
@@ -6889,25 +7472,11 @@ export default function LandingPage() {
             </div>
 
             {/* Feature 6 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm transition-all hover:border-amber-200 hover:shadow-md">
-              <div className="mb-4 inline-flex rounded-full bg-amber-100 p-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-6 w-6 text-amber-600"
-                >
-                  <rect width="20" height="14" x="2" y="5" rx="2" />
-                  <line x1="2" x2="22" y1="10" y2="10" />
-                </svg>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/30 hover:shadow-md animate-fade-in animate-slide-up" style={{animationDelay: "0.6s"}}>
+              <div className="mb-4 inline-flex rounded-full bg-primary/10 p-3">
+                <CreditCard className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold text-amber-800">Secure Payments</h3>
+              <h3 className="mb-2 text-xl font-semibold text-primary">Secure Payments</h3>
               <p className="text-muted-foreground">
                 Process payments securely. Support for multiple payment methods including UPI, cards, and more.
               </p>
@@ -6917,10 +7486,10 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonial Section */}
-      <section className="bg-amber-50 py-16">
+      <section className="bg-secondary/50 py-16">
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center">
-            <h2 className="mb-4 font-serif text-3xl font-bold text-amber-800 md:text-4xl">
+            <h2 className="mb-4 font-serif text-3xl font-bold text-primary md:text-4xl">
               Trusted by Jewelers Across India
             </h2>
             <p className="mx-auto max-w-2xl text-muted-foreground">
@@ -6930,15 +7499,13 @@ export default function LandingPage() {
 
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {/* Testimonial 1 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="mb-4 flex items-center">
-                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-amber-100">
-                  <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-amber-800">
-                    RS
-                  </div>
+                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-amber-800">Rajesh Sharma</h4>
+                  <h4 className="font-semibold text-primary">Rajesh Sharma</h4>
                   <p className="text-sm text-muted-foreground">Sharma Jewelers, Delhi</p>
                 </div>
               </div>
@@ -6949,15 +7516,13 @@ export default function LandingPage() {
             </div>
 
             {/* Testimonial 2 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="mb-4 flex items-center">
-                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-amber-100">
-                  <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-amber-800">
-                    PP
-                  </div>
+                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-amber-800">Priya Patel</h4>
+                  <h4 className="font-semibold text-primary">Priya Patel</h4>
                   <p className="text-sm text-muted-foreground">Patel Gold House, Mumbai</p>
                 </div>
               </div>
@@ -6968,15 +7533,13 @@ export default function LandingPage() {
             </div>
 
             {/* Testimonial 3 */}
-            <div className="rounded-lg border border-amber-100 bg-white p-6 shadow-sm">
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
               <div className="mb-4 flex items-center">
-                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-amber-100">
-                  <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-amber-800">
-                    AM
-                  </div>
+                <div className="mr-4 h-12 w-12 overflow-hidden rounded-full bg-primary/10 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-amber-800">Anand Mehta</h4>
+                  <h4 className="font-semibold text-primary">Anand Mehta</h4>
                   <p className="text-sm text-muted-foreground">Royal Jewels, Jaipur</p>
                 </div>
               </div>
@@ -6992,26 +7555,22 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="relative py-16">
         <div className="absolute inset-0 z-0">
-          <div
-            className="h-full w-full bg-cover bg-center"
-            style={{
-              backgroundImage: "url('/placeholder.svg?height=600&width=1920')",
-              backgroundPosition: "center 40%",
-            }}
-          >
-            <div className="h-full w-full bg-gradient-to-r from-black/80 via-black/70 to-black/80"></div>
+          <div className="h-full w-full bg-gradient-to-br from-primary via-primary/90 to-primary/80">
+            <div className="absolute inset-0 opacity-10 mix-blend-overlay" 
+                 style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E')" 
+            }}></div>
           </div>
         </div>
 
-        <div className="container relative z-10 mx-auto px-4 text-center">
+        <div className="container relative z-10 mx-auto px-4 text-center animate-fade-in">
           <h2 className="mb-4 font-serif text-3xl font-bold text-white md:text-4xl">
-            Ready to Transform Your Jewelry Business?
+            Elevate Your Jewelry Business Today
           </h2>
-          <p className="mx-auto mb-8 max-w-2xl text-gray-300">
-            Join hundreds of jewelry shop owners who have elevated their business with our premium management system.
+          <p className="mx-auto mb-8 max-w-2xl text-gray-200">
+            Join hundreds of jewelry shop owners who have transformed their business with our premium management system.
           </p>
           <AuthModal>
-            <Button size="lg" className="bg-amber-600 hover:bg-amber-700">
+            <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
               Get Started Today <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </AuthModal>
@@ -7019,36 +7578,19 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-amber-100 bg-white py-12">
+      <footer className="border-t border-border bg-card py-12">
         <div className="container mx-auto px-4">
           <div className="grid gap-8 md:grid-cols-4">
             <div>
               <div className="mb-4 flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="mr-2 h-6 w-6 text-amber-600"
-                >
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <path d="M14 2v6h6" />
-                  <path d="M16 13H8" />
-                  <path d="M16 17H8" />
-                  <path d="M10 9H8" />
-                </svg>
-                <span className="text-xl font-semibold text-amber-800">Sethiya Gold</span>
+                <Gem className="mr-2 h-6 w-6 text-primary" />
+                <span className="text-xl font-semibold text-primary">Sethiya Gold</span>
               </div>
               <p className="text-muted-foreground">Premium jewelry management system designed for Indian jewelers.</p>
             </div>
 
             <div>
-              <h4 className="mb-4 font-semibold text-amber-800">Features</h4>
+              <h4 className="mb-4 font-semibold text-primary">Features</h4>
               <ul className="space-y-2 text-muted-foreground">
                 <li>Inventory Management</li>
                 <li>Customer Relationship</li>
@@ -7059,81 +7601,27 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <h4 className="mb-4 font-semibold text-amber-800">Resources</h4>
+              <h4 className="mb-4 font-semibold text-primary">Resources</h4>
               <ul className="space-y-2 text-muted-foreground">
-                <li><Link href="/resources/documentation" className="hover:text-amber-600">Documentation</Link></li>
-                <li><Link href="/resources/tutorials" className="hover:text-amber-600">Tutorials</Link></li>
-                <li><Link href="/resources/blog" className="hover:text-amber-600">Blog</Link></li>
-                <li><Link href="/resources/contact-us" className="hover:text-amber-600">Contact Us</Link></li>
-                <li><Link href="/resources/faq" className="hover:text-amber-600">FAQ</Link></li>
-                <li><Link href="/resources/terms-and-conditions" className="hover:text-amber-600">Terms & Conditions</Link></li>
+                <li><Link href="/resources/documentation" className="hover:text-primary transition-colors">Documentation</Link></li>
+                <li><Link href="/resources/tutorials" className="hover:text-primary transition-colors">Tutorials</Link></li>
+                <li><Link href="/resources/blog" className="hover:text-primary transition-colors">Blog</Link></li>
+                <li><Link href="/resources/contact-us" className="hover:text-primary transition-colors">Contact Us</Link></li>
+                <li><Link href="/resources/faq" className="hover:text-primary transition-colors">FAQ</Link></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="mb-4 font-semibold text-amber-800">Contact</h4>
+              <h4 className="mb-4 font-semibold text-primary">Contact</h4>
               <ul className="space-y-2 text-muted-foreground">
                 <li>info@sethiyagold.com</li>
                 <li>+91 98765 43210</li>
                 <li>Mumbai, India</li>
-                <li><Link href="/resources/contact-us" className="hover:text-amber-600">Contact Page</Link></li>
               </ul>
-              <div className="mt-4 flex space-x-4">
-                <a href="#" className="text-amber-600 hover:text-amber-800">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5"
-                  >
-                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
-                  </svg>
-                </a>
-                <a href="#" className="text-amber-600 hover:text-amber-800">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5"
-                  >
-                    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
-                  </svg>
-                </a>
-                <a href="#" className="text-amber-600 hover:text-amber-800">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5"
-                  >
-                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                  </svg>
-                </a>
-              </div>
             </div>
           </div>
 
-          <div className="mt-8 border-t border-amber-100 pt-8 text-center text-sm text-muted-foreground">
+          <div className="mt-8 border-t border-border pt-8 text-center text-sm text-muted-foreground">
             <p>&copy; {new Date().getFullYear()} Sethiya Gold. All rights reserved.</p>
           </div>
         </div>
@@ -13065,296 +13553,85 @@ module.exports = {
 }
 </file>
 
-<file path="app/settings/page.tsx">
+<file path="app/customers/page.tsx">
 "use client"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Download, FileText, Home, Mail, Phone, Save, Settings, Upload, Building, Bell, Database, Receipt, Tag, Image } from "lucide-react"
+import { PlusCircle, Search, FileText, Home, Filter, ArrowUpDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { CustomerCard } from "@/app/customers/customer-card"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/components/auth-provider"
 import supabase from "@/lib/supabase"
-import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/components/ui/use-toast"
 
-export default function SettingsPage() {
-  const { user, isLoading } = useAuth();
-  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
-  
-  const [firmDetails, setFirmDetails] = useState({
-    name: "Sethiya Gold",
-    phone: "+91 9876543210",
-    address: "123 Jewelry Lane, Mumbai, Maharashtra 400001",
-    gstin: "27ABCDE1234F1Z5",
-    email: "contact@sethiyagold.com",
-    website: "www.sethiyagold.com",
-    establishmentDate: "01/01/1995"
-  });
-  
-  const [notificationSettings, setNotificationSettings] = useState({
-    email: true,
-    push: false,
-    sms: true,
-    whatsapp: false,
-    frequency: "instant",
-    quietHoursStart: "22:00",
-    quietHoursEnd: "07:00"
-  });
-  
-  const [invoiceSettings, setInvoiceSettings] = useState({
-    defaultPrefix: "INV-",
-    nextNumber: 1,
-    defaultNotes: ""
-  });
-  
-  const [labelSettings, setLabelSettings] = useState({
-    type: "standard",
-    copies: 1,
-    includeProductName: true,
-    includePrice: true,
-    includeBarcode: true,
-    includeDate: true,
-    includeMetal: true,
-    includeWeight: true,
-    includePurity: true,
-    includeQrCode: true
-  });
-  
-  const [photoSettings, setPhotoSettings] = useState({
-    compressionLevel: "medium"
-  });
-  
-  const [backupFileName, setBackupFileName] = useState("");
-  
-  // Fetch user settings when component mounts and user is available
+export default function CustomersPage() {
+  const { user } = useAuth();
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+
+  // Fetch customers from Supabase
   useEffect(() => {
-    const fetchUserSettings = async () => {
+    const fetchCustomers = async () => {
       if (!user) return;
-      
+
       try {
-        setIsSettingsLoading(true);
+        setIsLoading(true);
+        
         const { data, error } = await supabase
-          .from('user_settings')
+          .from('customers')
           .select('*')
           .eq('user_id', user.id)
-          .single();
-        
+          .order('created_at', { ascending: false });
+
         if (error) {
-          // If error is not 'no rows returned', show error
-          if (error.code !== 'PGRST116') {
-            console.error('Error fetching settings:', error);
-            toast({
-              title: "Error loading settings",
-              description: "There was a problem loading your settings. Please try again.",
-              variant: "destructive",
-            });
-          }
-          // For first time users or no settings found, keep default values
-        } else if (data) {
-          // Update firm details
-          setFirmDetails({
-            name: data.firm_name || firmDetails.name,
-            phone: data.firm_phone || firmDetails.phone,
-            address: data.firm_address || firmDetails.address,
-            gstin: data.firm_gstin || firmDetails.gstin,
-            email: data.firm_email || firmDetails.email,
-            website: data.firm_website || firmDetails.website,
-            establishmentDate: data.firm_establishment_date || firmDetails.establishmentDate
-          });
-          
-          // Update notification settings
-          setNotificationSettings({
-            email: data.notifications_email_enabled ?? notificationSettings.email,
-            push: data.notifications_push_enabled ?? notificationSettings.push,
-            sms: data.notifications_sms_enabled ?? notificationSettings.sms,
-            whatsapp: data.notifications_whatsapp_enabled ?? notificationSettings.whatsapp,
-            frequency: data.notifications_frequency || notificationSettings.frequency,
-            quietHoursStart: data.notifications_quiet_hours_start || notificationSettings.quietHoursStart,
-            quietHoursEnd: data.notifications_quiet_hours_end || notificationSettings.quietHoursEnd
-          });
-          
-          // Update invoice settings
-          setInvoiceSettings({
-            defaultPrefix: data.invoice_default_prefix || invoiceSettings.defaultPrefix,
-            nextNumber: data.invoice_next_number || invoiceSettings.nextNumber,
-            defaultNotes: data.invoice_default_notes || invoiceSettings.defaultNotes
-          });
-          
-          // Update label settings
-          setLabelSettings({
-            type: data.label_type || labelSettings.type,
-            copies: data.label_copies || labelSettings.copies,
-            includeProductName: data.label_include_product_name ?? labelSettings.includeProductName,
-            includePrice: data.label_include_price ?? labelSettings.includePrice,
-            includeBarcode: data.label_include_barcode ?? labelSettings.includeBarcode,
-            includeDate: data.label_include_date ?? labelSettings.includeDate,
-            includeMetal: data.label_include_metal ?? labelSettings.includeMetal,
-            includeWeight: data.label_include_weight ?? labelSettings.includeWeight,
-            includePurity: data.label_include_purity ?? labelSettings.includePurity,
-            includeQrCode: data.label_include_qr_code ?? labelSettings.includeQrCode
-          });
-          
-          // Update photo settings
-          setPhotoSettings({
-            compressionLevel: data.photo_compression_level || photoSettings.compressionLevel
-          });
+          throw error;
         }
-      } catch (error) {
-        console.error('Error in fetchUserSettings:', error);
-      } finally {
-        setIsSettingsLoading(false);
-      }
-    };
-    
-    if (!isLoading) {
-      fetchUserSettings();
-    }
-  }, [user, isLoading]);
-  
-  const handleFirmDetailChange = (field: string, value: string) => {
-    setFirmDetails(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  const handleNotificationChange = (field: string, value: boolean | string) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  const handleInvoiceSettingChange = (field: string, value: string | number) => {
-    setInvoiceSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  const handleLabelSettingChange = (field: string, value: string | number | boolean) => {
-    setLabelSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  const handlePhotoSettingChange = (field: string, value: string) => {
-    setPhotoSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  const handleSaveChanges = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "You must be logged in to save settings.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      // Construct the settings payload
-      const settingsPayload = {
-        user_id: user.id,
-        // Firm Details
-        firm_name: firmDetails.name,
-        firm_phone: firmDetails.phone,
-        firm_address: firmDetails.address,
-        firm_gstin: firmDetails.gstin,
-        firm_email: firmDetails.email,
-        firm_website: firmDetails.website,
-        firm_establishment_date: firmDetails.establishmentDate,
-        // Notification Settings
-        notifications_email_enabled: notificationSettings.email,
-        notifications_push_enabled: notificationSettings.push,
-        notifications_sms_enabled: notificationSettings.sms,
-        notifications_whatsapp_enabled: notificationSettings.whatsapp,
-        notifications_frequency: notificationSettings.frequency,
-        notifications_quiet_hours_start: notificationSettings.quietHoursStart,
-        notifications_quiet_hours_end: notificationSettings.quietHoursEnd,
-        // Invoice Settings
-        invoice_default_prefix: invoiceSettings.defaultPrefix,
-        invoice_next_number: invoiceSettings.nextNumber,
-        invoice_default_notes: invoiceSettings.defaultNotes,
-        // Label Settings
-        label_type: labelSettings.type,
-        label_copies: labelSettings.copies,
-        label_include_product_name: labelSettings.includeProductName,
-        label_include_price: labelSettings.includePrice,
-        label_include_barcode: labelSettings.includeBarcode,
-        label_include_date: labelSettings.includeDate,
-        label_include_metal: labelSettings.includeMetal,
-        label_include_weight: labelSettings.includeWeight,
-        label_include_purity: labelSettings.includePurity,
-        label_include_qr_code: labelSettings.includeQrCode,
-        // Photo Settings
-        photo_compression_level: photoSettings.compressionLevel,
-      };
-      
-      // Save settings to Supabase
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert(settingsPayload, { onConflict: 'user_id' });
-      
-      if (error) {
-        console.error('Error saving settings:', error);
+
+        setCustomers(data || []);
+      } catch (error: any) {
         toast({
-          title: "Error saving settings",
-          description: "There was a problem saving your settings. Please try again.",
+          title: "Error loading customers",
+          description: error.message || "Could not load customers. Please try again.",
           variant: "destructive",
         });
-        return;
+      } finally {
+        setIsLoading(false);
       }
-      
-      toast({
-        title: "Changes saved",
-        description: "Your settings have been updated successfully",
-      });
-    } catch (error) {
-      console.error('Error in handleSaveChanges:', error);
-      toast({
-        title: "Error saving settings",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+    };
+
+    fetchCustomers();
+  }, [user]);
+
+  // Filter and search customers
+  const filteredCustomers = customers.filter(customer => {
+    // Apply search filter
+    if (searchQuery && !customer.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
     }
-  };
-  
-  const handleBackup = () => {
-    toast({
-      title: "Backup created",
-      description: "Your data has been backed up successfully",
-    });
-  };
-  
-  const handleRestore = () => {
-    if (!backupFileName) {
-      toast({
-        title: "No file selected",
-        description: "Please select a backup file to restore",
-        variant: "destructive",
-      });
-      return;
+
+    // Apply category filter
+    if (filter === "referred" && !customer.referred_by) {
+      return false;
     }
-    
-    toast({
-      title: "Restore initiated",
-      description: "Your data is being restored from backup",
-    });
-  };
-  
+
+    return true;
+  });
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
@@ -13372,584 +13649,175 @@ export default function SettingsPage() {
         </nav>
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Customer Management</h1>
+            <p className="text-muted-foreground">Manage your customer relationships and information</p>
+          </div>
+          <Link href="/customers/add">
+            <Button className="bg-primary hover:bg-primary/90">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Customer
             </Button>
           </Link>
-          <div className="ml-4">
-            <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-            <p className="text-muted-foreground">Manage your firm settings, notifications, and backups</p>
+        </div>
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="flex flex-1 items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input 
+                placeholder="Search customers..." 
+                className="pl-10" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button variant="outline" size="icon" title="Filter">
+              <Filter className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" title="Sort">
+              <ArrowUpDown className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select 
+              value={filter} 
+              onValueChange={setFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Filter by</SelectLabel>
+                  <SelectItem value="all">All Customers</SelectItem>
+                  <SelectItem value="recent">Recent Customers</SelectItem>
+                  <SelectItem value="referred">Referred Customers</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-        
-        <Tabs defaultValue="firm-details" className="w-full">
-          <TabsList className="mb-4 grid w-full grid-cols-6">
-            <TabsTrigger value="firm-details" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              <span>Firm Details</span>
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
-              <Bell className="h-4 w-4" />
-              <span>Notifications</span>
-            </TabsTrigger>
-            <TabsTrigger value="backup" className="flex items-center gap-2">
-              <Database className="h-4 w-4" />
-              <span>Backup</span>
-            </TabsTrigger>
-            <TabsTrigger value="invoice-settings" className="flex items-center gap-2">
-              <Receipt className="h-4 w-4" />
-              <span>Invoice</span>
-            </TabsTrigger>
-            <TabsTrigger value="label-settings" className="flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              <span>Label</span>
-            </TabsTrigger>
-            <TabsTrigger value="photo-settings" className="flex items-center gap-2">
-              <Image className="h-4 w-4" />
-              <span>Photo</span>
-            </TabsTrigger>
+
+        <Tabs defaultValue="grid" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="grid">Grid View</TabsTrigger>
+            <TabsTrigger value="table">Table View</TabsTrigger>
           </TabsList>
-          
-          {/* Firm Details Tab */}
-          <TabsContent value="firm-details" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Firm Details</CardTitle>
-                <CardDescription>Manage your firm's information</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-6">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="firmName">Firm Name</Label>
-                      <Input 
-                        id="firmName" 
-                        value={firmDetails.name}
-                        onChange={(e) => handleFirmDetailChange("name", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="firmPhone">Firm Phone Number</Label>
-                      <Input 
-                        id="firmPhone" 
-                        value={firmDetails.phone}
-                        onChange={(e) => handleFirmDetailChange("phone", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="firmAddress">Firm Address</Label>
-                    <Input 
-                      id="firmAddress" 
-                      value={firmDetails.address}
-                      onChange={(e) => handleFirmDetailChange("address", e.target.value)}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="firmGstin">Firm GSTIN Number</Label>
-                      <Input 
-                        id="firmGstin" 
-                        value={firmDetails.gstin}
-                        onChange={(e) => handleFirmDetailChange("gstin", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="firmEmail">Firm Email Address</Label>
-                      <Input 
-                        id="firmEmail" 
-                        type="email" 
-                        value={firmDetails.email}
-                        onChange={(e) => handleFirmDetailChange("email", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="firmWebsite">Firm Website</Label>
-                      <Input 
-                        id="firmWebsite" 
-                        value={firmDetails.website}
-                        onChange={(e) => handleFirmDetailChange("website", e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dateEstablished">Date of Establishment</Label>
-                      <Input 
-                        id="dateEstablished" 
-                        value={firmDetails.establishmentDate}
-                        onChange={(e) => handleFirmDetailChange("establishmentDate", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    type="button" 
-                    className="bg-primary hover:bg-primary/90"
-                    onClick={handleSaveChanges}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Changes
+          <TabsContent value="grid" className="space-y-4">
+            {isLoading ? (
+              <div className="flex h-40 items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <p className="ml-2">Loading customers...</p>
+              </div>
+            ) : filteredCustomers.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {filteredCustomers.map((customer) => (
+                  <CustomerCard 
+                    key={customer.id} 
+                    customer={{
+                      id: customer.id,
+                      name: customer.name,
+                      phone: customer.phone || "",
+                      email: customer.email || "",
+                      address: customer.address || "",
+                      identityType: customer.identity_type,
+                      identityNumber: customer.identity_reference || "",
+                      referredBy: customer.referred_by,
+                      createdAt: new Date(customer.created_at),
+                      // Mock last transaction data
+                      lastTransaction: {
+                        id: "INV-XXXX-XXX",
+                        date: new Date(),
+                        amount: 0,
+                        type: "N/A",
+                        description: "No transaction data"
+                      }
+                    }} 
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed">
+                <p className="text-muted-foreground">No customers found</p>
+                <Link href="/customers/add" className="mt-2">
+                  <Button variant="outline" size="sm">
+                    <PlusCircle className="mr-2 h-3 w-3" />
+                    Add Your First Customer
                   </Button>
-                </form>
-              </CardContent>
-            </Card>
+                </Link>
+              </div>
+            )}
           </TabsContent>
-          
-          {/* Notifications Tab */}
-          <TabsContent value="notifications" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>Configure your notification preferences</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Notification Channels</h3>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="emailNotifications">Email Notifications</Label>
-                        <Switch 
-                          id="emailNotifications" 
-                          checked={notificationSettings.email}
-                          onCheckedChange={(checked) => handleNotificationChange("email", checked)}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="pushNotifications">Push Notifications</Label>
-                        <Switch 
-                          id="pushNotifications" 
-                          checked={notificationSettings.push}
-                          onCheckedChange={(checked) => handleNotificationChange("push", checked)}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="smsNotifications">SMS Notifications</Label>
-                        <Switch 
-                          id="smsNotifications" 
-                          checked={notificationSettings.sms}
-                          onCheckedChange={(checked) => handleNotificationChange("sms", checked)}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="whatsappNotifications">WhatsApp Notifications</Label>
-                        <Switch 
-                          id="whatsappNotifications" 
-                          checked={notificationSettings.whatsapp}
-                          onCheckedChange={(checked) => handleNotificationChange("whatsapp", checked)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Notification Frequency and Quiet Hours</h3>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="notificationFrequency">Notification Frequency</Label>
-                      <Select 
-                        value={notificationSettings.frequency} 
-                        onValueChange={(value) => handleNotificationChange("frequency", value)}
-                      >
-                        <SelectTrigger id="notificationFrequency">
-                          <SelectValue placeholder="Select frequency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="instant">Instant</SelectItem>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Quiet Hours</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="quietHoursStart">Start Time</Label>
-                          <Input
-                            id="quietHoursStart"
-                            type="time"
-                            value={notificationSettings.quietHoursStart}
-                            onChange={(e) => handleNotificationChange("quietHoursStart", e.target.value)}
-                          />
+          <TabsContent value="table">
+            <div className="rounded-md border">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="py-3 pl-4 pr-3 text-left text-sm font-medium">Name</th>
+                    <th className="px-3 py-3 text-left text-sm font-medium">Contact</th>
+                    <th className="px-3 py-3 text-left text-sm font-medium">ID Type</th>
+                    <th className="px-3 py-3 text-left text-sm font-medium">Created At</th>
+                    <th className="px-3 py-3 text-left text-sm font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={5} className="py-6 text-center">
+                        <div className="flex items-center justify-center">
+                          <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                          <p className="ml-2">Loading customers...</p>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="quietHoursEnd">End Time</Label>
-                          <Input
-                            id="quietHoursEnd"
-                            type="time"
-                            value={notificationSettings.quietHoursEnd}
-                            onChange={(e) => handleNotificationChange("quietHoursEnd", e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    type="button" 
-                    className="bg-primary hover:bg-primary/90"
-                    onClick={handleSaveChanges}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Preferences
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          {/* Backup Tab */}
-          <TabsContent value="backup" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Backup & Restore</CardTitle>
-                <CardDescription>Create backups and restore your data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    {/* Create Backup Section */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Create Backup</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Download a complete backup of your data for safekeeping.
-                      </p>
-                      <Button 
-                        className="w-full"
-                        onClick={handleBackup}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Backup
-                      </Button>
-                    </div>
-                    
-                    {/* Restore Backup Section */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Restore Backup</h3>
-                      <div className="space-y-2">
-                        <Label htmlFor="backupFile">Select Backup File</Label>
-                        <div className="flex items-center">
-                          <Input 
-                            id="backupFile" 
-                            type="file" 
-                            onChange={(e) => setBackupFileName(e.target.files?.[0]?.name || "")}
-                          />
-                        </div>
-                        <p className="text-sm text-amber-600">
-                          Restoring a backup will replace all your current data
-                        </p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={handleRestore}
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Restore Selected Backup
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Backup History */}
-                  <div className="space-y-4 rounded-md border p-4">
-                    <h3 className="font-medium">Backup History</h3>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-sm font-medium">Recent Backups Created</h4>
-                        <p className="text-sm text-muted-foreground">No recent backups</p>
-                      </div>
-                      
-                      <div>
-                        <h4 className="text-sm font-medium">Recent Restores</h4>
-                        <p className="text-sm text-muted-foreground">No recent restores</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Invoice Settings Tab */}
-          <TabsContent value="invoice-settings" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Invoice Settings</CardTitle>
-                <CardDescription>Configure your invoice preferences and defaults</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="invoicePrefix">Invoice Number Prefix</Label>
-                      <Input
-                        id="invoicePrefix"
-                        placeholder="e.g., INV-"
-                        value={invoiceSettings.defaultPrefix}
-                        onChange={(e) => handleInvoiceSettingChange("defaultPrefix", e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        This will be prepended to invoice numbers (e.g., INV-001)
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="nextInvoiceNumber">Next Invoice Number</Label>
-                      <Input
-                        id="nextInvoiceNumber"
-                        type="number"
-                        min="1"
-                        placeholder="1"
-                        value={invoiceSettings.nextNumber}
-                        onChange={(e) => handleInvoiceSettingChange("nextNumber", parseInt(e.target.value, 10) || 1)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        The next invoice will use this number and increment it
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="defaultNotes">Default Invoice Notes</Label>
-                    <Textarea
-                      id="defaultNotes"
-                      placeholder="These notes will appear on all invoices by default"
-                      rows={4}
-                      value={invoiceSettings.defaultNotes}
-                      onChange={(e) => handleInvoiceSettingChange("defaultNotes", e.target.value)}
-                    />
-                  </div>
-                  
-                  <Button 
-                    type="button" 
-                    className="bg-primary hover:bg-primary/90"
-                    onClick={handleSaveChanges}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Invoice Settings
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Label Settings Tab */}
-          <TabsContent value="label-settings" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Label Configuration</CardTitle>
-                <CardDescription>Configure and print labels for inventory items</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                  {/* Label Options */}
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-semibold">Label Options</h3>
-                    
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="labelType">Label Type</Label>
-                        <Select 
-                          value={labelSettings.type}
-                          onValueChange={(value) => handleLabelSettingChange("type", value)}
-                        >
-                          <SelectTrigger id="labelType">
-                            <SelectValue placeholder="Standard (2.25&quot; x 1.25&quot;)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="standard">Standard (2.25" x 1.25")</SelectItem>
-                            <SelectItem value="large">Large (3" x 2")</SelectItem>
-                            <SelectItem value="small">Small (1.5" x 1")</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="numberOfLabels">Number of Labels</Label>
-                        <Select
-                          value={labelSettings.copies.toString()}
-                          onValueChange={(value) => handleLabelSettingChange("copies", parseInt(value, 10))}
-                        >
-                          <SelectTrigger id="numberOfLabels">
-                            <SelectValue placeholder="1" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5, 10].map((num) => (
-                              <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-3">
-                        <Label>Include on Label</Label>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-4">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="productName" 
-                                checked={labelSettings.includeProductName}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeProductName", checked === true)
-                                }
-                              />
-                              <Label htmlFor="productName">Product Name</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="price" 
-                                checked={labelSettings.includePrice}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includePrice", checked === true)
-                                }
-                              />
-                              <Label htmlFor="price">Price</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="barcode" 
-                                checked={labelSettings.includeBarcode}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeBarcode", checked === true)
-                                }
-                              />
-                              <Label htmlFor="barcode">Barcode</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="date" 
-                                checked={labelSettings.includeDate}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeDate", checked === true)
-                                }
-                              />
-                              <Label htmlFor="date">Date</Label>
-                            </div>
+                      </td>
+                    </tr>
+                  ) : filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((customer) => (
+                      <tr key={customer.id} className="border-b">
+                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm">
+                          <div className="font-medium">{customer.name}</div>
+                          {customer.referred_by && <div className="text-xs text-muted-foreground">Referred by {customer.referred_by}</div>}
+                        </td>
+                        <td className="px-3 py-4 text-sm">
+                          <div>{customer.phone || "N/A"}</div>
+                          <div className="text-muted-foreground">{customer.email || "N/A"}</div>
+                        </td>
+                        <td className="px-3 py-4 text-sm">
+                          {customer.identity_type === 'pan_card' ? 'PAN Card' : 
+                           customer.identity_type === 'aadhaar_card' ? 'Aadhaar Card' : 
+                           customer.identity_type === 'others' ? 'Other ID' : 'None'}
+                          {customer.identity_reference && `: ${customer.identity_reference}`}
+                        </td>
+                        <td className="px-3 py-4 text-sm">
+                          {new Date(customer.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-3 py-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Link href={`/customers/${customer.id}`}>
+                              <Button variant="outline" size="sm">
+                                View
+                              </Button>
+                            </Link>
+                            <Link href={`/customers/${customer.id}/edit`}>
+                              <Button variant="outline" size="sm">
+                                Edit
+                              </Button>
+                            </Link>
                           </div>
-                          <div className="space-y-4">
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="metal" 
-                                checked={labelSettings.includeMetal}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeMetal", checked === true)
-                                }
-                              />
-                              <Label htmlFor="metal">Metal</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="weight" 
-                                checked={labelSettings.includeWeight}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeWeight", checked === true)
-                                }
-                              />
-                              <Label htmlFor="weight">Weight</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="purity" 
-                                checked={labelSettings.includePurity}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includePurity", checked === true)
-                                }
-                              />
-                              <Label htmlFor="purity">Purity</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="qrCode" 
-                                checked={labelSettings.includeQrCode}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeQrCode", checked === true)
-                                }
-                              />
-                              <Label htmlFor="qrCode">QR Code</Label>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <Button 
-                      className="w-full bg-primary hover:bg-primary/90"
-                      onClick={handleSaveChanges}
-                    >
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Configuration
-                    </Button>
-                  </div>
-
-                  {/* Label Preview */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Label Preview</h3>
-                    <div className="rounded-lg border-2 border-dashed border-muted p-8 text-center">
-                      <p className="text-muted-foreground">
-                        Label preview will appear here when printing from inventory
-                      </p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Note: The actual configuration will be applied when printing labels from the Inventory section.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Photo Settings Tab */}
-          <TabsContent value="photo-settings" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Photo Settings</CardTitle>
-                <CardDescription>Configure image compression and quality settings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="imageCompression">Image Compression Level</Label>
-                    <Select
-                      value={photoSettings.compressionLevel}
-                      onValueChange={(value) => handlePhotoSettingChange("compressionLevel", value)}
-                    >
-                      <SelectTrigger id="imageCompression">
-                        <SelectValue placeholder="Select compression level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-sm text-muted-foreground">
-                      Choose the compression level for images uploaded to the application. Higher compression means smaller file sizes but lower image quality.
-                    </p>
-                  </div>
-
-                  <Button 
-                    type="button" 
-                    className="bg-primary hover:bg-primary/90"
-                    onClick={handleSaveChanges}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Settings
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-6 text-center text-muted-foreground">
+                        No customers found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </TabsContent>
         </Tabs>
       </main>
@@ -16206,80 +16074,296 @@ export default function CreateInvoicePage() {
 }
 </file>
 
-<file path="app/dashboard/page.tsx">
+<file path="app/settings/page.tsx">
 "use client"
 
-import type { Metadata } from "next"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import {
-  Box,
-  FileText,
-  Home,
-  Package,
-  Plus,
-  Users,
-  User,
-  LogOut,
-  Lock,
-  ChevronDown,
-  BarChart4,
-  ShoppingBag,
-  Receipt,
-  Calendar,
-  Settings,
-} from "lucide-react"
+import { ArrowLeft, Download, FileText, Home, Mail, Phone, Save, Settings, Upload, Building, Bell, Database, Receipt, Tag, Image } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@/components/ui/use-toast"
 import supabase from "@/lib/supabase"
+import { Textarea } from "@/components/ui/textarea"
 
-// Remove the metadata export since this is now a client component
-// export const metadata: Metadata = {
-//   title: "Dashboard - Sethiya Gold",
-//   description: "A premium invoicing system for Indian jewelry shops",
-// }
-
-export default function DashboardPage() {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
-  const { toast } = useToast()
-
+export default function SettingsPage() {
+  const { user, isLoading } = useAuth();
+  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
+  
+  const [firmDetails, setFirmDetails] = useState({
+    name: "Sethiya Gold",
+    phone: "+91 9876543210",
+    address: "123 Jewelry Lane, Mumbai, Maharashtra 400001",
+    gstin: "27ABCDE1234F1Z5",
+    email: "contact@sethiyagold.com",
+    website: "www.sethiyagold.com",
+    establishmentDate: "01/01/1995"
+  });
+  
+  const [notificationSettings, setNotificationSettings] = useState({
+    email: true,
+    push: false,
+    sms: true,
+    whatsapp: false,
+    frequency: "instant",
+    quietHoursStart: "22:00",
+    quietHoursEnd: "07:00"
+  });
+  
+  const [invoiceSettings, setInvoiceSettings] = useState({
+    defaultPrefix: "INV-",
+    nextNumber: 1,
+    defaultNotes: ""
+  });
+  
+  const [labelSettings, setLabelSettings] = useState({
+    type: "standard",
+    copies: 1,
+    includeProductName: true,
+    includePrice: true,
+    includeBarcode: true,
+    includeDate: true,
+    includeMetal: true,
+    includeWeight: true,
+    includePurity: true,
+    includeQrCode: true
+  });
+  
+  const [photoSettings, setPhotoSettings] = useState({
+    compressionLevel: "medium"
+  });
+  
+  const [backupFileName, setBackupFileName] = useState("");
+  
+  // Fetch user settings when component mounts and user is available
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/")
+    const fetchUserSettings = async () => {
+      if (!user) return;
+      
+      try {
+        setIsSettingsLoading(true);
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) {
+          // If error is not 'no rows returned', show error
+          if (error.code !== 'PGRST116') {
+            console.error('Error fetching settings:', error);
+            toast({
+              title: "Error loading settings",
+              description: "There was a problem loading your settings. Please try again.",
+              variant: "destructive",
+            });
+          }
+          // For first time users or no settings found, keep default values
+        } else if (data) {
+          // Update firm details
+          setFirmDetails({
+            name: data.firm_name || firmDetails.name,
+            phone: data.firm_phone || firmDetails.phone,
+            address: data.firm_address || firmDetails.address,
+            gstin: data.firm_gstin || firmDetails.gstin,
+            email: data.firm_email || firmDetails.email,
+            website: data.firm_website || firmDetails.website,
+            establishmentDate: data.firm_establishment_date || firmDetails.establishmentDate
+          });
+          
+          // Update notification settings
+          setNotificationSettings({
+            email: data.notifications_email_enabled ?? notificationSettings.email,
+            push: data.notifications_push_enabled ?? notificationSettings.push,
+            sms: data.notifications_sms_enabled ?? notificationSettings.sms,
+            whatsapp: data.notifications_whatsapp_enabled ?? notificationSettings.whatsapp,
+            frequency: data.notifications_frequency || notificationSettings.frequency,
+            quietHoursStart: data.notifications_quiet_hours_start || notificationSettings.quietHoursStart,
+            quietHoursEnd: data.notifications_quiet_hours_end || notificationSettings.quietHoursEnd
+          });
+          
+          // Update invoice settings
+          setInvoiceSettings({
+            defaultPrefix: data.invoice_default_prefix || invoiceSettings.defaultPrefix,
+            nextNumber: data.invoice_next_number || invoiceSettings.nextNumber,
+            defaultNotes: data.invoice_default_notes || invoiceSettings.defaultNotes
+          });
+          
+          // Update label settings
+          setLabelSettings({
+            type: data.label_type || labelSettings.type,
+            copies: data.label_copies || labelSettings.copies,
+            includeProductName: data.label_include_product_name ?? labelSettings.includeProductName,
+            includePrice: data.label_include_price ?? labelSettings.includePrice,
+            includeBarcode: data.label_include_barcode ?? labelSettings.includeBarcode,
+            includeDate: data.label_include_date ?? labelSettings.includeDate,
+            includeMetal: data.label_include_metal ?? labelSettings.includeMetal,
+            includeWeight: data.label_include_weight ?? labelSettings.includeWeight,
+            includePurity: data.label_include_purity ?? labelSettings.includePurity,
+            includeQrCode: data.label_include_qr_code ?? labelSettings.includeQrCode
+          });
+          
+          // Update photo settings
+          setPhotoSettings({
+            compressionLevel: data.photo_compression_level || photoSettings.compressionLevel
+          });
+        }
+      } catch (error) {
+        console.error('Error in fetchUserSettings:', error);
+      } finally {
+        setIsSettingsLoading(false);
+      }
+    };
+    
+    if (!isLoading) {
+      fetchUserSettings();
+    }
+  }, [user, isLoading]);
+  
+  const handleFirmDetailChange = (field: string, value: string) => {
+    setFirmDetails(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleNotificationChange = (field: string, value: boolean | string) => {
+    setNotificationSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleInvoiceSettingChange = (field: string, value: string | number) => {
+    setInvoiceSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleLabelSettingChange = (field: string, value: string | number | boolean) => {
+    setLabelSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handlePhotoSettingChange = (field: string, value: string) => {
+    setPhotoSettings(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handleSaveChanges = async () => {
+    if (!user) {
       toast({
         title: "Authentication required",
-        description: "Please log in to access the dashboard",
+        description: "You must be logged in to save settings.",
         variant: "destructive",
-      })
+      });
+      return;
     }
-  }, [user, isLoading, router, toast])
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
+    
+    try {
+      // Construct the settings payload
+      const settingsPayload = {
+        user_id: user.id,
+        // Firm Details
+        firm_name: firmDetails.name,
+        firm_phone: firmDetails.phone,
+        firm_address: firmDetails.address,
+        firm_gstin: firmDetails.gstin,
+        firm_email: firmDetails.email,
+        firm_website: firmDetails.website,
+        firm_establishment_date: firmDetails.establishmentDate,
+        // Notification Settings
+        notifications_email_enabled: notificationSettings.email,
+        notifications_push_enabled: notificationSettings.push,
+        notifications_sms_enabled: notificationSettings.sms,
+        notifications_whatsapp_enabled: notificationSettings.whatsapp,
+        notifications_frequency: notificationSettings.frequency,
+        notifications_quiet_hours_start: notificationSettings.quietHoursStart,
+        notifications_quiet_hours_end: notificationSettings.quietHoursEnd,
+        // Invoice Settings
+        invoice_default_prefix: invoiceSettings.defaultPrefix,
+        invoice_next_number: invoiceSettings.nextNumber,
+        invoice_default_notes: invoiceSettings.defaultNotes,
+        // Label Settings
+        label_type: labelSettings.type,
+        label_copies: labelSettings.copies,
+        label_include_product_name: labelSettings.includeProductName,
+        label_include_price: labelSettings.includePrice,
+        label_include_barcode: labelSettings.includeBarcode,
+        label_include_date: labelSettings.includeDate,
+        label_include_metal: labelSettings.includeMetal,
+        label_include_weight: labelSettings.includeWeight,
+        label_include_purity: labelSettings.includePurity,
+        label_include_qr_code: labelSettings.includeQrCode,
+        // Photo Settings
+        photo_compression_level: photoSettings.compressionLevel,
+      };
+      
+      // Save settings to Supabase
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert(settingsPayload, { onConflict: 'user_id' });
+      
+      if (error) {
+        console.error('Error saving settings:', error);
+        toast({
+          title: "Error saving settings",
+          description: "There was a problem saving your settings. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Changes saved",
+        description: "Your settings have been updated successfully",
+      });
+    } catch (error) {
+      console.error('Error in handleSaveChanges:', error);
+      toast({
+        title: "Error saving settings",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleBackup = () => {
     toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    })
-  }
-
-  // Show loading state or nothing while checking authentication
-  if (isLoading || !user) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
-  }
-
+      title: "Backup created",
+      description: "Your data has been backed up successfully",
+    });
+  };
+  
+  const handleRestore = () => {
+    if (!backupFileName) {
+      toast({
+        title: "No file selected",
+        description: "Please select a backup file to restore",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "Restore initiated",
+      description: "Your data is being restored from backup",
+    });
+  };
+  
   return (
     <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
@@ -16291,202 +16375,591 @@ export default function DashboardPage() {
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
               <Home className="mr-2 h-4 w-4" />
-              Home
+              Dashboard
             </Button>
           </Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex items-center gap-1">
-                <User className="h-4 w-4" />
-                <span>{user.email}</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>View Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Lock className="mr-2 h-4 w-4" />
-                <span>Change Password</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Logout</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </nav>
       </header>
-      <main className="flex flex-1 flex-col gap-6 p-6 md:gap-8 md:p-8">
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome to Sethiya Gold</h1>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Sales Card */}
-          <Card className="col-span-1 overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md md:col-span-2 lg:col-span-3">
-            <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5 text-primary" />
-                Sales
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                {/* Create Invoice */}
-                <Link href="/create-invoice" className="group">
-                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Receipt className="h-4 w-4 text-primary" />
-                        Create Invoice
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-2">
-                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                        <Plus className="h-8 w-8" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-
-                {/* View Invoices */}
-                <Link href="/invoices" className="group">
-                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <FileText className="h-4 w-4 text-primary" />
-                        View Invoices
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-2">
-                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                        <FileText className="h-8 w-8" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-
-                {/* Create Booking */}
-                <Link href="/bookings/create" className="group">
-                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        Create Booking
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-2">
-                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                        <Calendar className="h-8 w-8" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Stock Tile */}
-          <Link href="/stock" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-primary" />
-                  Stock
-                </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                    <Box className="h-12 w-12" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-          {/* Customer Tile */}
-          <Link href="/customers" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Customer
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                  <Users className="h-12 w-12" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Reports Tile */}
-          <Link href="/reports" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart4 className="h-5 w-5 text-primary" />
-                  Reports
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                  <BarChart4 className="h-12 w-12" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Settings Tile */}
-          <Link href="/settings" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-primary" />
-                  Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                  <Settings className="h-12 w-12" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-        </div>
-
-        <div className="mt-4 rounded-lg border border-border bg-secondary p-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-secondary/80 p-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                className="h-4 w-4 text-primary"
-              >
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-medium">Current Gold Rate</h3>
-              <p className="text-sm text-muted-foreground">₹6,450 per 10 grams (22K) | Updated: Today</p>
-            </div>
-            <Button variant="outline" size="sm" className="ml-auto">
-              Update Rate
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm" className="gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Dashboard
             </Button>
+          </Link>
+          <div className="ml-4">
+            <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
           </div>
         </div>
+        
+        <Tabs defaultValue="firm-details" className="w-full">
+          <TabsList className="mb-4 flex overflow-x-auto whitespace-nowrap">
+            <TabsTrigger value="firm-details" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span>Firm Details</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              <span>Notifications</span>
+            </TabsTrigger>
+            <TabsTrigger value="backup" className="flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              <span>Backup</span>
+            </TabsTrigger>
+            <TabsTrigger value="invoice-settings" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" />
+              <span>Invoice</span>
+            </TabsTrigger>
+            <TabsTrigger value="label-settings" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              <span>Label</span>
+            </TabsTrigger>
+            <TabsTrigger value="photo-settings" className="flex items-center gap-2">
+              <Image className="h-4 w-4" />
+              <span>Photo</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Firm Details Tab */}
+          <TabsContent value="firm-details" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Firm Details</CardTitle>
+                <CardDescription>Manage your firm's information</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="firmName">Firm Name</Label>
+                      <Input 
+                        id="firmName" 
+                        value={firmDetails.name}
+                        onChange={(e) => handleFirmDetailChange("name", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="firmPhone">Firm Phone Number</Label>
+                      <Input 
+                        id="firmPhone" 
+                        value={firmDetails.phone}
+                        onChange={(e) => handleFirmDetailChange("phone", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="firmAddress">Firm Address</Label>
+                    <Input 
+                      id="firmAddress" 
+                      value={firmDetails.address}
+                      onChange={(e) => handleFirmDetailChange("address", e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="firmGstin">Firm GSTIN Number</Label>
+                      <Input 
+                        id="firmGstin" 
+                        value={firmDetails.gstin}
+                        onChange={(e) => handleFirmDetailChange("gstin", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="firmEmail">Firm Email Address</Label>
+                      <Input 
+                        id="firmEmail" 
+                        type="email" 
+                        value={firmDetails.email}
+                        onChange={(e) => handleFirmDetailChange("email", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="firmWebsite">Firm Website</Label>
+                      <Input 
+                        id="firmWebsite" 
+                        value={firmDetails.website}
+                        onChange={(e) => handleFirmDetailChange("website", e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="dateEstablished">Date of Establishment</Label>
+                      <Input 
+                        id="dateEstablished" 
+                        value={firmDetails.establishmentDate}
+                        onChange={(e) => handleFirmDetailChange("establishmentDate", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    type="button" 
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={handleSaveChanges}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Notifications Tab */}
+          <TabsContent value="notifications" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notifications</CardTitle>
+                <CardDescription>Configure your notification preferences</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Notification Channels</h3>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="emailNotifications">Email Notifications</Label>
+                        <Switch 
+                          id="emailNotifications" 
+                          checked={notificationSettings.email}
+                          onCheckedChange={(checked) => handleNotificationChange("email", checked)}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="pushNotifications">Push Notifications</Label>
+                        <Switch 
+                          id="pushNotifications" 
+                          checked={notificationSettings.push}
+                          onCheckedChange={(checked) => handleNotificationChange("push", checked)}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="smsNotifications">SMS Notifications</Label>
+                        <Switch 
+                          id="smsNotifications" 
+                          checked={notificationSettings.sms}
+                          onCheckedChange={(checked) => handleNotificationChange("sms", checked)}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="whatsappNotifications">WhatsApp Notifications</Label>
+                        <Switch 
+                          id="whatsappNotifications" 
+                          checked={notificationSettings.whatsapp}
+                          onCheckedChange={(checked) => handleNotificationChange("whatsapp", checked)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Notification Frequency and Quiet Hours</h3>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="notificationFrequency">Notification Frequency</Label>
+                      <Select 
+                        value={notificationSettings.frequency} 
+                        onValueChange={(value) => handleNotificationChange("frequency", value)}
+                      >
+                        <SelectTrigger id="notificationFrequency">
+                          <SelectValue placeholder="Select frequency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="instant">Instant</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Quiet Hours</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="quietHoursStart">Start Time</Label>
+                          <Input
+                            id="quietHoursStart"
+                            type="time"
+                            value={notificationSettings.quietHoursStart}
+                            onChange={(e) => handleNotificationChange("quietHoursStart", e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="quietHoursEnd">End Time</Label>
+                          <Input
+                            id="quietHoursEnd"
+                            type="time"
+                            value={notificationSettings.quietHoursEnd}
+                            onChange={(e) => handleNotificationChange("quietHoursEnd", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    type="button" 
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={handleSaveChanges}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Preferences
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Backup Tab */}
+          <TabsContent value="backup" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Backup & Restore</CardTitle>
+                <CardDescription>Create backups and restore your data</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {/* Create Backup Section */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Create Backup</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Download a complete backup of your data for safekeeping.
+                      </p>
+                      <Button 
+                        className="w-full"
+                        onClick={handleBackup}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Backup
+                      </Button>
+                    </div>
+                    
+                    {/* Restore Backup Section */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">Restore Backup</h3>
+                      <div className="space-y-2">
+                        <Label htmlFor="backupFile">Select Backup File</Label>
+                        <div className="flex items-center">
+                          <Input 
+                            id="backupFile" 
+                            type="file" 
+                            onChange={(e) => setBackupFileName(e.target.files?.[0]?.name || "")}
+                          />
+                        </div>
+                        <p className="text-sm text-amber-600">
+                          Restoring a backup will replace all your current data
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={handleRestore}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Restore Selected Backup
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Backup History */}
+                  <div className="space-y-4 rounded-md border p-4">
+                    <h3 className="font-medium">Backup History</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium">Recent Backups Created</h4>
+                        <p className="text-sm text-muted-foreground">No recent backups</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-medium">Recent Restores</h4>
+                        <p className="text-sm text-muted-foreground">No recent restores</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Invoice Settings Tab */}
+          <TabsContent value="invoice-settings" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Invoice Settings</CardTitle>
+                <CardDescription>Configure your invoice preferences and defaults</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="invoicePrefix">Invoice Number Prefix</Label>
+                      <Input
+                        id="invoicePrefix"
+                        placeholder="e.g., INV-"
+                        value={invoiceSettings.defaultPrefix}
+                        onChange={(e) => handleInvoiceSettingChange("defaultPrefix", e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        This will be prepended to invoice numbers (e.g., INV-001)
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="nextInvoiceNumber">Next Invoice Number</Label>
+                      <Input
+                        id="nextInvoiceNumber"
+                        type="number"
+                        min="1"
+                        placeholder="1"
+                        value={invoiceSettings.nextNumber}
+                        onChange={(e) => handleInvoiceSettingChange("nextNumber", parseInt(e.target.value, 10) || 1)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        The next invoice will use this number and increment it
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultNotes">Default Invoice Notes</Label>
+                    <Textarea
+                      id="defaultNotes"
+                      placeholder="These notes will appear on all invoices by default"
+                      rows={4}
+                      value={invoiceSettings.defaultNotes}
+                      onChange={(e) => handleInvoiceSettingChange("defaultNotes", e.target.value)}
+                    />
+                  </div>
+                  
+                  <Button 
+                    type="button" 
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={handleSaveChanges}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Invoice Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Label Settings Tab */}
+          <TabsContent value="label-settings" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Label Configuration</CardTitle>
+                <CardDescription>Configure and print labels for inventory items</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                  {/* Label Options */}
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-semibold">Label Options</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="labelType">Label Type</Label>
+                        <Select 
+                          value={labelSettings.type}
+                          onValueChange={(value) => handleLabelSettingChange("type", value)}
+                        >
+                          <SelectTrigger id="labelType">
+                            <SelectValue placeholder="Standard (2.25&quot; x 1.25&quot;)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="standard">Standard (2.25" x 1.25")</SelectItem>
+                            <SelectItem value="large">Large (3" x 2")</SelectItem>
+                            <SelectItem value="small">Small (1.5" x 1")</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="numberOfLabels">Number of Labels</Label>
+                        <Select
+                          value={labelSettings.copies.toString()}
+                          onValueChange={(value) => handleLabelSettingChange("copies", parseInt(value, 10))}
+                        >
+                          <SelectTrigger id="numberOfLabels">
+                            <SelectValue placeholder="1" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[1, 2, 3, 4, 5, 10].map((num) => (
+                              <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label>Include on Label</Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="productName" 
+                                checked={labelSettings.includeProductName}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeProductName", checked === true)
+                                }
+                              />
+                              <Label htmlFor="productName">Product Name</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="price" 
+                                checked={labelSettings.includePrice}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includePrice", checked === true)
+                                }
+                              />
+                              <Label htmlFor="price">Price</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="barcode" 
+                                checked={labelSettings.includeBarcode}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeBarcode", checked === true)
+                                }
+                              />
+                              <Label htmlFor="barcode">Barcode</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="date" 
+                                checked={labelSettings.includeDate}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeDate", checked === true)
+                                }
+                              />
+                              <Label htmlFor="date">Date</Label>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="metal" 
+                                checked={labelSettings.includeMetal}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeMetal", checked === true)
+                                }
+                              />
+                              <Label htmlFor="metal">Metal</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="weight" 
+                                checked={labelSettings.includeWeight}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeWeight", checked === true)
+                                }
+                              />
+                              <Label htmlFor="weight">Weight</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="purity" 
+                                checked={labelSettings.includePurity}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includePurity", checked === true)
+                                }
+                              />
+                              <Label htmlFor="purity">Purity</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="qrCode" 
+                                checked={labelSettings.includeQrCode}
+                                onCheckedChange={(checked) => 
+                                  handleLabelSettingChange("includeQrCode", checked === true)
+                                }
+                              />
+                              <Label htmlFor="qrCode">QR Code</Label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button 
+                      className="w-full bg-primary hover:bg-primary/90"
+                      onClick={handleSaveChanges}
+                    >
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Configuration
+                    </Button>
+                  </div>
+
+                  {/* Label Preview */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Label Preview</h3>
+                    <div className="rounded-lg border-2 border-dashed border-muted p-8 text-center">
+                      <p className="text-muted-foreground">
+                        Label preview will appear here when printing from inventory
+                      </p>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Note: The actual configuration will be applied when printing labels from the Inventory section.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Photo Settings Tab */}
+          <TabsContent value="photo-settings" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Photo Settings</CardTitle>
+                <CardDescription>Configure image compression and quality settings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="imageCompression">Image Compression Level</Label>
+                    <Select
+                      value={photoSettings.compressionLevel}
+                      onValueChange={(value) => handlePhotoSettingChange("compressionLevel", value)}
+                    >
+                      <SelectTrigger id="imageCompression">
+                        <SelectValue placeholder="Select compression level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Choose the compression level for images uploaded to the application. Higher compression means smaller file sizes but lower image quality.
+                    </p>
+                  </div>
+
+                  <Button 
+                    type="button" 
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={handleSaveChanges}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )
@@ -17199,6 +17672,293 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
 });
 
 InvoicePreview.displayName = "InvoicePreview";
+</file>
+
+<file path="app/dashboard/page.tsx">
+"use client"
+
+import type { Metadata } from "next"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import {
+  Box,
+  FileText,
+  Home,
+  Package,
+  Plus,
+  Users,
+  User,
+  LogOut,
+  Lock,
+  ChevronDown,
+  BarChart4,
+  ShoppingBag,
+  Receipt,
+  Calendar,
+  Settings,
+} from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/components/ui/use-toast"
+import supabase from "@/lib/supabase"
+
+// Remove the metadata export since this is now a client component
+// export const metadata: Metadata = {
+//   title: "Dashboard - Sethiya Gold",
+//   description: "A premium invoicing system for Indian jewelry shops",
+// }
+
+export default function DashboardPage() {
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push("/")
+      toast({
+        title: "Authentication required",
+        description: "Please log in to access the dashboard",
+        variant: "destructive",
+      })
+    }
+  }, [user, isLoading, router, toast])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+    })
+  }
+
+  // Show loading state or nothing while checking authentication
+  if (isLoading || !user) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
+  }
+
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+          <FileText className="h-6 w-6 text-primary" />
+          <span className="text-xl">Sethiya Gold</span>
+        </Link>
+        <nav className="ml-auto flex items-center gap-4">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm">
+              <Home className="mr-2 h-4 w-4" />
+              Home
+            </Button>
+          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                <User className="h-4 w-4" />
+                <span>{user.user_metadata?.full_name || user.email}</span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>View Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Lock className="mr-2 h-4 w-4" />
+                <span>Change Password</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </nav>
+      </header>
+      <main className="flex flex-1 flex-col gap-6 p-6 md:gap-8 md:p-8">
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome to Sethiya Gold</h1>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Sales Card */}
+          <Card className="col-span-1 overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md md:col-span-2 lg:col-span-3">
+            <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5 text-primary" />
+                Sales
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* Create Invoice */}
+                <Link href="/create-invoice" className="group">
+                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Receipt className="h-4 w-4 text-primary" />
+                        Create Invoice
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                        <Plus className="h-8 w-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                {/* View Invoices */}
+                <Link href="/invoices" className="group">
+                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <FileText className="h-4 w-4 text-primary" />
+                        View Invoices
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                        <FileText className="h-8 w-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                {/* Create Booking */}
+                <Link href="/bookings/create" className="group">
+                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        Create Booking
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                        <Calendar className="h-8 w-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Stock Tile */}
+          <Link href="/stock" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  Stock
+                </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                    <Box className="h-12 w-12" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+          {/* Customer Tile */}
+          <Link href="/customers" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Customer
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <Users className="h-12 w-12" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Reports Tile */}
+          <Link href="/reports" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart4 className="h-5 w-5 text-primary" />
+                  Reports
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <BarChart4 className="h-12 w-12" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Settings Tile */}
+          <Link href="/settings" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-primary" />
+                  Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <Settings className="h-12 w-12" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+        </div>
+
+        <div className="mt-4 rounded-lg border border-border bg-secondary p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-secondary/80 p-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                className="h-4 w-4 text-primary"
+              >
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-medium">Current Gold Rate</h3>
+              <p className="text-sm text-muted-foreground">₹6,450 per 10 grams (22K) | Updated: Today</p>
+            </div>
+            <Button variant="outline" size="sm" className="ml-auto">
+              Update Rate
+            </Button>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
 </file>
 
 <file path="app/create-invoice/invoice-pdf.tsx">
