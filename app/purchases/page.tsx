@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Building, Plus, Search, ArrowDownUp, FileText, ShoppingCart } from "lucide-react"
+import { Building, Plus, Search, ArrowDownUp, FileText, ShoppingCart, Edit } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import supabase from "@/lib/supabase"
 import { Tables } from "@/lib/database.types"
+import SupplierCard from "./components/supplier-card"
 
 type PurchaseInvoice = Tables<"purchase_invoices"> & {
   suppliers?: {
@@ -244,9 +245,19 @@ export default function PurchasesPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => router.push(`/purchases/invoices/${invoice.id}`)}
+                              title="View"
                             >
                               <FileText className="h-4 w-4" />
                               <span className="sr-only">View</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => router.push(`/purchases/invoices/${invoice.id}/edit`)}
+                              title="Edit"
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
                             </Button>
                           </div>
                         </TableCell>
@@ -282,45 +293,7 @@ export default function PurchasesPage() {
             ) : filteredSuppliers.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredSuppliers.map((supplier) => (
-                  <Card key={supplier.id} className="overflow-hidden">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">{supplier.name}</CardTitle>
-                      {supplier.contact_person && (
-                        <CardDescription>Contact: {supplier.contact_person}</CardDescription>
-                      )}
-                    </CardHeader>
-                    <CardContent className="pb-3">
-                      <div className="grid gap-2">
-                        {supplier.phone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium">Phone:</span>
-                            <span>{supplier.phone}</span>
-                          </div>
-                        )}
-                        {supplier.email && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium">Email:</span>
-                            <span>{supplier.email}</span>
-                          </div>
-                        )}
-                        {supplier.address && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium">Address:</span>
-                            <span className="line-clamp-1">{supplier.address}</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                    <div className="flex justify-end border-t bg-secondary/20 p-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.push(`/purchases/suppliers/${supplier.id}`)}
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                  </Card>
+                  <SupplierCard key={supplier.id} supplier={supplier} />
                 ))}
               </div>
             ) : (

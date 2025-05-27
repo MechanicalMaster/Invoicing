@@ -136,8 +136,18 @@ export default function AddPurchaseInvoicePage() {
           
           const bucketExists = buckets.some(bucket => bucket.name === 'purchase-invoices')
           
+          // Create the bucket if it doesn't exist
           if (!bucketExists) {
-            throw new Error("Storage bucket 'purchase-invoices' does not exist")
+            const { error: createBucketError } = await supabase.storage
+              .createBucket('purchase-invoices', {
+                public: true,
+                fileSizeLimit: 5242880 // 5MB limit
+              })
+            
+            if (createBucketError) {
+              console.error("Error creating bucket:", createBucketError)
+              throw createBucketError
+            }
           }
           
           // Now upload the file
