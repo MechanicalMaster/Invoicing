@@ -43,7 +43,6 @@ interface InvoiceItem {
   quantity: number
   weight: number
   pricePerGram: number
-  makingCharges: number
   total: number
 }
 
@@ -87,7 +86,6 @@ export default function CreateInvoicePage() {
         quantity: 1,
         weight: 0,
         pricePerGram: 6450,
-        makingCharges: 0,
         total: 0,
       },
     ] as InvoiceItem[],
@@ -226,19 +224,11 @@ export default function CreateInvoicePage() {
           }
           
           // Recalculate total for this item
-          if (field !== "makingCharges") {
-            updatedItem.total = calculateItemBaseTotal(
-              updatedItem.quantity,
-              updatedItem.weight,
-              updatedItem.pricePerGram
-            ) + updatedItem.makingCharges
-          } else {
-            updatedItem.total = calculateItemBaseTotal(
-              updatedItem.quantity,
-              updatedItem.weight,
-              updatedItem.pricePerGram
-            ) + Number(value)
-          }
+          updatedItem.total = calculateItemBaseTotal(
+            updatedItem.quantity,
+            updatedItem.weight,
+            updatedItem.pricePerGram
+          )
           
           return updatedItem
         }
@@ -261,7 +251,6 @@ export default function CreateInvoicePage() {
           quantity: 1,
           weight: 0,
           pricePerGram: prev.items[0]?.pricePerGram || 6450, // Use the price from the first item or default
-          makingCharges: 0,
           total: 0,
         },
       ],
@@ -295,14 +284,11 @@ export default function CreateInvoicePage() {
       sum + calculateItemBaseTotal(item.quantity, item.weight, item.pricePerGram), 0
     )
     
-    // Sum up all item making charges
-    const totalMakingCharges = items.reduce((sum, item) => sum + item.makingCharges, 0)
-    
     // Subtotal is the base value of all items
     const subtotal = itemsBaseTotal
     
-    // Grand total before GST includes making charges
-    const grandTotalBeforeGst = subtotal + totalMakingCharges
+    // Grand total before GST is the same as subtotal since we no longer have making charges
+    const grandTotalBeforeGst = subtotal
     
     // Calculate GST on the grand total
     const gstAmount = grandTotalBeforeGst * (gst / 100)
@@ -312,7 +298,6 @@ export default function CreateInvoicePage() {
     
     return {
       itemsBaseTotal: itemsBaseTotal.toFixed(2),
-      totalMakingCharges: totalMakingCharges.toFixed(2),
       subtotal: subtotal.toFixed(2),
       grandTotalBeforeGst: grandTotalBeforeGst.toFixed(2),
       gstAmount: gstAmount.toFixed(2),
@@ -322,6 +307,16 @@ export default function CreateInvoicePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check if any item is invalid
+    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in all required item fields with valid values",
+        variant: "destructive",
+      })
+      return
+    }
     
     // Validate customer selection
     if (!formData.selectedCustomerId) {
@@ -333,22 +328,18 @@ export default function CreateInvoicePage() {
       return
     }
     
-    // Validate at least one item with complete info
-    const hasValidItems = formData.items.some(
-      (item) => item.name && item.quantity > 0 && item.weight > 0
-    )
-    
-    if (!hasValidItems) {
+    // If customer ID is "add_new_customer" but we don't have a name, show error
+    if (formData.selectedCustomerId === "add_new_customer" && (!formData.selectedCustomerDetails || !formData.selectedCustomerDetails.name.trim())) {
       toast({
-        title: "Item details required",
-        description: "Please enter valid item details with name, quantity, and weight",
+        title: "Customer name required",
+        description: "Please enter a name for the new customer",
         variant: "destructive",
       })
       return
     }
     
     // Save invoice to database before showing preview
-    saveInvoiceToDB().then(() => {
+    handleSaveInvoice().then(() => {
       setShowPreview(true)
     }).catch(error => {
       toast({
@@ -389,7 +380,6 @@ export default function CreateInvoicePage() {
           firm_address_snapshot: firmDetails.firmAddress,
           firm_phone_snapshot: firmDetails.firmPhone,
           firm_gstin_snapshot: firmDetails.firmGstin,
-          total_making_charges: Number(calculatedTotals.totalMakingCharges),
           subtotal: Number(calculatedTotals.subtotal),
           gst_percentage: formData.gst,
           gst_amount: Number(calculatedTotals.gstAmount),
@@ -414,7 +404,6 @@ export default function CreateInvoicePage() {
         quantity: item.quantity,
         weight: item.weight,
         price_per_gram: item.pricePerGram,
-        making_charges: item.makingCharges,
         total: item.total
       }))
       
@@ -475,9 +464,6 @@ export default function CreateInvoicePage() {
       email: undefined 
     }
     
-    // Sum up all making charges from items
-    const totalMakingCharges = formData.items.reduce((sum, item) => sum + item.makingCharges, 0)
-    
     return {
       invoiceNumber:
         invoicePrefix +
@@ -497,10 +483,8 @@ export default function CreateInvoicePage() {
         quantity: item.quantity,
         weight: item.weight,
         pricePerGram: item.pricePerGram,
-        makingCharges: item.makingCharges,
         total: item.total,
       })),
-      makingCharges: totalMakingCharges,
       subtotal: Number(calculatedTotals.subtotal),
       gstPercentage: formData.gst,
       gstAmount: Number(calculatedTotals.gstAmount),
@@ -514,6 +498,78 @@ export default function CreateInvoicePage() {
     content: () => invoiceRef.current,
     documentTitle: `Invoice-${generateInvoiceData().invoiceNumber}`,
   });
+
+  const handleSaveInvoice = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to save an invoice",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    // Validate required fields
+    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in all required item fields with valid values",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    try {
+      setIsSaving(true)
+      
+      const id = await saveInvoiceToDB()
+      
+      toast({
+        title: "Invoice saved",
+        description: "The invoice has been successfully saved.",
+        variant: "default",
+      })
+      
+      // Navigate to invoice detail page
+      router.push(`/invoices/${id}`)
+    } catch (error: any) {
+      console.error("Error saving invoice:", error)
+      toast({
+        title: "Error saving invoice",
+        description: error.message || "An error occurred while saving the invoice.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Handle previewing the invoice
+  const handlePreview = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Check if any item is invalid
+    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in all required item fields with valid values",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    // If customer ID is "add_new_customer" but we don't have a name, show error
+    if (formData.selectedCustomerId === "add_new_customer" && (!formData.selectedCustomerDetails || !formData.selectedCustomerDetails.name.trim())) {
+      toast({
+        title: "Customer name required",
+        description: "Please enter a name for the new customer",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    setShowPreview(true)
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -677,18 +733,6 @@ export default function CreateInvoicePage() {
                         </div>
                         
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-making-charges-${item.id}`}>Making Charges (₹)</Label>
-                            <Input
-                              id={`item-making-charges-${item.id}`}
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="Enter making charges"
-                              value={item.makingCharges}
-                              onChange={(e) => handleItemChange(item.id, "makingCharges", e.target.value)}
-                            />
-                          </div>
                           <div className="space-y-2 flex flex-col justify-end">
                             <div className="text-right">
                               <div className="text-sm text-muted-foreground">Base Value: ₹{calculateItemBaseTotal(item.quantity, item.weight, item.pricePerGram).toFixed(2)}</div>
@@ -723,10 +767,6 @@ export default function CreateInvoicePage() {
                       <span>₹{calculateTotal().itemsBaseTotal}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Total Making Charges:</span>
-                      <span>₹{calculateTotal().totalMakingCharges}</span>
-                    </div>
-                    <div className="flex justify-between border-b py-1">
                       <span>Subtotal (Before GST):</span>
                       <span>₹{calculateTotal().grandTotalBeforeGst}</span>
                     </div>

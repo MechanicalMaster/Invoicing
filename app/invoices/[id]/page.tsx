@@ -27,7 +27,6 @@ interface InvoiceItem {
   quantity: number
   weight: number
   price_per_gram: number
-  making_charges: number
   total: number
 }
 
@@ -174,10 +173,8 @@ export default function InvoiceDetailPage() {
         quantity: item.quantity,
         weight: item.weight,
         pricePerGram: item.price_per_gram,
-        makingCharges: item.making_charges,
         total: item.total,
       })),
-      makingCharges: invoice.total_making_charges,
       subtotal: invoice.subtotal,
       gstPercentage: invoice.gst_percentage,
       gstAmount: invoice.gst_amount,

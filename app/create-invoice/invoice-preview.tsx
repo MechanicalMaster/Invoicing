@@ -10,7 +10,6 @@ interface InvoiceItem {
   quantity: number
   weight: number
   pricePerGram: number
-  makingCharges: number
   total: number
 }
 
@@ -26,7 +25,6 @@ export interface InvoiceData {
   firmPhone: string
   firmGstin: string
   items: InvoiceItem[]
-  makingCharges: number
   subtotal: number
   gstPercentage: number
   gstAmount: number
@@ -95,11 +93,10 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-gray-200">
-                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "28%" }}>Item</th>
-                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "8%" }}>Qty</th>
-                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "12%" }}>Weight (g)</th>
-                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "17%" }}>Price/10g (₹)</th>
-                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "15%" }}>Making (₹)</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "35%" }}>Item</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "10%" }}>Qty</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "15%" }}>Weight (g)</th>
+                  <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "20%" }}>Price/10g (₹)</th>
                   <th className="border border-gray-400 p-2 text-sm font-medium text-center" style={{ width: "20%" }}>Amount (₹)</th>
                 </tr>
               </thead>
@@ -110,7 +107,6 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
                     <td className="border border-gray-400 p-2 text-sm text-center">{item.quantity}</td>
                     <td className="border border-gray-400 p-2 text-sm text-right">{item.weight.toFixed(3)}</td>
                     <td className="border border-gray-400 p-2 text-sm text-right">{(item.pricePerGram * 10).toFixed(2)}</td>
-                    <td className="border border-gray-400 p-2 text-sm text-right">{item.makingCharges.toFixed(2)}</td>
                     <td className="border border-gray-400 p-2 text-sm text-right">{item.total.toFixed(2)}</td>
                   </tr>
                 ))}
@@ -124,10 +120,6 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
               <div className="flex justify-between border-b py-1 text-sm">
                 <span>Subtotal (Items Value):</span>
                 <span>₹{invoiceData.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-b py-1 text-sm">
-                <span>Total Making Charges:</span>
-                <span>₹{invoiceData.makingCharges.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-b py-1 text-sm">
                 <span>GST ({invoiceData.gstPercentage}%):</span>

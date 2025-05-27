@@ -34,6 +34,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica', // Default font
     fontSize: 10,           // Default font size for body text
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#000000',
   },
   // Header Styles
   headerSection: {
@@ -161,11 +163,10 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'Helvetica',
   },
-  colItem: { width: '28%' },
-  colQty: { width: '8%', textAlign: 'center' },
-  colWeight: { width: '12%', textAlign: 'right' },
-  colPricePerGram: { width: '17%', textAlign: 'right' },
-  colMaking: { width: '15%', textAlign: 'right' },
+  colItem: { width: '35%' },
+  colQty: { width: '10%', textAlign: 'center' },
+  colWeight: { width: '15%', textAlign: 'right' },
+  colPricePerGram: { width: '20%', textAlign: 'right' },
   colAmount: { width: '20%', textAlign: 'right', borderRightWidth: 0 },
   tableRowLight: { backgroundColor: '#FFFFFF' },
   tableRowDark: { backgroundColor: '#F5F5F5' },
@@ -339,14 +340,13 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           )}
         </View>
 
-        {/* --- ITEMS TABLE --- */}
+        {/* --- ITEMS TABLE SECTION --- */}
         <View style={styles.table}>
           <View style={styles.tableRow}>
             <Text style={[styles.tableColHeader, styles.colItem]}>Item</Text>
             <Text style={[styles.tableColHeader, styles.colQty]}>Qty</Text>
             <Text style={[styles.tableColHeader, styles.colWeight]}>Weight (g)</Text>
             <Text style={[styles.tableColHeader, styles.colPricePerGram]}>Price/10g (₹)</Text>
-            <Text style={[styles.tableColHeader, styles.colMaking]}>Making (₹)</Text>
             <Text style={[styles.tableColHeader, styles.colAmount]}>Amount (₹)</Text>
           </View>
 
@@ -355,9 +355,8 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
               <Text style={[styles.tableCol, styles.colItem]}>{item.name}</Text>
               <Text style={[styles.tableCol, styles.colQty]}>{item.quantity}</Text>
               <Text style={[styles.tableCol, styles.colWeight]}>{item.weight.toFixed(3)}</Text>
-              <Text style={[styles.tableCol, styles.colPricePerGram]}>{(item.pricePerGram * 10).toFixed(2)}</Text>
-              <Text style={[styles.tableCol, styles.colMaking]}>{item.makingCharges.toFixed(2)}</Text>
-              <Text style={[styles.tableCol, styles.colAmount]}>{item.total.toFixed(2)}</Text>
+              <Text style={[styles.tableCol, styles.colPricePerGram]}>₹{(item.pricePerGram * 10).toFixed(2)}</Text>
+              <Text style={[styles.tableCol, styles.colAmount]}>₹{item.total.toFixed(2)}</Text>
             </View>
           ))}
         </View>
@@ -368,10 +367,6 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal (Items Value):</Text>
               <Text style={styles.summaryValue}>₹{invoice.subtotal.toFixed(2)}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Making Charges:</Text>
-              <Text style={styles.summaryValue}>₹{invoice.makingCharges.toFixed(2)}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>GST ({invoice.gstPercentage}%):</Text>
