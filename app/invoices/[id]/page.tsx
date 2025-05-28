@@ -207,61 +207,7 @@ export default function InvoiceDetailPage() {
   // Show loading state while fetching data
   if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <span className="text-xl">Sethiya Gold</span>
-          </Link>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-          <div className="flex items-center">
-            <Link href="/invoices">
-              <Button variant="ghost" size="sm" className="gap-1">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Invoices
-              </Button>
-            </Link>
-            <Skeleton className="ml-4 h-8 w-48" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Skeleton className="h-10 w-28" />
-            <Skeleton className="h-10 w-28" />
-            <Skeleton className="h-10 w-28" />
-          </div>
-          <Skeleton className="h-[60vh] w-full" />
-        </main>
-      </div>
-    )
-  }
-  
-  // If no invoice found
-  if (!invoice) {
-    return (
-      <div className="flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <span className="text-xl">Sethiya Gold</span>
-          </Link>
-        </header>
-        <main className="flex flex-1 flex-col items-center justify-center">
-          <h1 className="text-2xl font-bold">Invoice Not Found</h1>
-          <p className="mb-4 text-muted-foreground">The requested invoice could not be found</p>
-          <Link href="/invoices">
-            <Button>Back to Invoices</Button>
-          </Link>
-        </main>
-      </div>
-    )
-  }
-  
-  return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <span className="text-xl">Sethiya Gold</span>
-        </Link>
-      </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+      <>
         <div className="flex items-center">
           <Link href="/invoices">
             <Button variant="ghost" size="sm" className="gap-1">
@@ -269,62 +215,95 @@ export default function InvoiceDetailPage() {
               Back to Invoices
             </Button>
           </Link>
-          <h1 className="ml-4 text-xl font-semibold md:text-2xl">
-            Invoice #{invoice.invoice_number}
-          </h1>
+          <Skeleton className="ml-4 h-8 w-48" />
         </div>
+        <div className="flex justify-end gap-2">
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+        </div>
+        <Skeleton className="h-[60vh] w-full" />
+      </>
+    )
+  }
+  
+  // If no invoice found
+  if (!invoice) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <h1 className="text-2xl font-bold">Invoice Not Found</h1>
+        <p className="mb-4 text-muted-foreground">The requested invoice could not be found</p>
+        <Link href="/invoices">
+          <Button>Back to Invoices</Button>
+        </Link>
+      </div>
+    )
+  }
+  
+  return (
+    <>
+      <div className="flex items-center">
+        <Link href="/invoices">
+          <Button variant="ghost" size="sm" className="gap-1">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Invoices
+          </Button>
+        </Link>
+        <h1 className="ml-4 text-xl font-semibold md:text-2xl">
+          Invoice #{invoice.invoice_number}
+        </h1>
+      </div>
+      
+      <div className="flex flex-wrap justify-end gap-2">
+        {invoice.status !== 'paid' && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={isUpdating}>
+                <DollarSign className="mr-2 h-4 w-4" />
+                Mark as Paid
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Mark Invoice as Paid?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will update the invoice status to "Paid". This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={markAsPaid}>Continue</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         
-        <div className="flex flex-wrap justify-end gap-2">
-          {invoice.status !== 'paid' && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={isUpdating}>
-                  <DollarSign className="mr-2 h-4 w-4" />
-                  Mark as Paid
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Mark Invoice as Paid?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will update the invoice status to "Paid". This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={markAsPaid}>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          
-          <Link href={`/invoices/${invoice.id}/edit`}>
-            <Button variant="outline">
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Invoice
-            </Button>
-          </Link>
-          
-          {isBrowser && (
-            <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print Invoice
-            </Button>
-          )}
-          
-          {isBrowser && (
-            <PDFDownloadLinkWrapper
-              invoiceData={formatInvoiceDataForPreview()}
-              onStartGeneration={() => setIsGeneratingPDF(true)}
-              onFinishGeneration={() => setIsGeneratingPDF(false)}
-            />
-          )}
-        </div>
+        <Link href={`/invoices/${invoice.id}/edit`}>
+          <Button variant="outline">
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Invoice
+          </Button>
+        </Link>
         
-        <div ref={invoiceRef}>
-          <InvoicePreview invoiceData={formatInvoiceDataForPreview()} />
-        </div>
-      </main>
-    </div>
+        {isBrowser && (
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="mr-2 h-4 w-4" />
+            Print Invoice
+          </Button>
+        )}
+        
+        {isBrowser && (
+          <PDFDownloadLinkWrapper
+            invoiceData={formatInvoiceDataForPreview()}
+            onStartGeneration={() => setIsGeneratingPDF(true)}
+            onFinishGeneration={() => setIsGeneratingPDF(false)}
+          />
+        )}
+      </div>
+      
+      <div ref={invoiceRef}>
+        <InvoicePreview invoiceData={formatInvoiceDataForPreview()} />
+      </div>
+    </>
   )
 } 

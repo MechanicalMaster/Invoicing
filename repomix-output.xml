@@ -79,6 +79,7 @@ app/
         page.tsx
       loading.tsx
       page.tsx
+    layout.tsx
     loading.tsx
     page.tsx
   profile/
@@ -212,6 +213,7 @@ styles/
   globals.css
 .gitignore
 components.json
+edit_invoice.md
 features.md
 next.config.mjs
 package.json
@@ -224,15 +226,115 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
-<file path="migrations/remove_making_charges.sql">
--- Migration: Remove Making Charges columns
--- Description: Removes the making_charges column from invoice_items and total_making_charges from invoices table
+<file path="app/invoices/layout.tsx">
+import Link from "next/link"
+import { FileText } from "lucide-react"
+import { AuthProvider } from "@/components/auth-provider"
 
--- Drop making_charges column from invoice_items table
-ALTER TABLE invoice_items DROP COLUMN IF EXISTS making_charges;
+export default function InvoicesLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <AuthProvider>
+      <div className="flex min-h-screen w-full flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+            <FileText className="h-6 w-6 text-amber-500" />
+            <span className="text-xl">Sethiya Gold</span>
+          </Link>
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          {children}
+        </main>
+      </div>
+    </AuthProvider>
+  )
+}
+</file>
 
--- Drop total_making_charges column from invoices table
-ALTER TABLE invoices DROP COLUMN IF EXISTS total_making_charges;
+<file path="edit_invoice.md">
+## Planning Phase
+
+Here's the step-by-step implementation plan:
+
+### Part 1: Implement Edit Invoice Functionality
+
+1.  **Create Edit Invoice Page Structure (`app/invoices/[id]/edit/page.tsx`):**
+    *   Remove the "Coming Soon" content.
+    *   This page will be client-side rendered (`"use client"`).
+    *   Add state variables for:
+        *   `invoiceData` (to hold the fetched invoice header).
+        *   `invoiceItemsData` (to hold fetched invoice items).
+        *   `formData` (similar to `app/create-invoice/page.tsx`, to manage editable fields: date, items array, notes).
+        *   `customers` (for potential display, though likely read-only).
+        *   `firmDetails` (for potential display, though likely read-only).
+        *   `isLoading`, `isSaving`.
+    *   Implement `useEffect` to fetch existing invoice data and its items when the component mounts, based on `params.id` and `user`. This will involve querying the `invoices` and `invoice_items` tables.
+    *   Populate `formData` with the fetched data.
+    *   **Files Impacted**: `app/invoices/[id]/edit/page.tsx`.
+
+2.  **Adapt Create Invoice Form for Editing (`app/invoices/[id]/edit/page.tsx`):**
+    *   Reuse the form structure from `app/create-invoice/page.tsx`.
+    *   **Customer Section**: Display the `customer_name_snapshot`, `customer_address_snapshot`, etc., from the fetched `invoiceData` as read-only fields. Do not allow changing the customer on an existing invoice.
+    *   **Date Field**: Make the invoice date editable, pre-filled with `invoiceData.invoice_date`.
+    *   **Items Section**:
+        *   Populate with `invoiceItemsData`. Each item should have a unique ID (the existing `id` from the database).
+        *   Adapt `handleItemChange`, `addItem`, `removeItem` functions:
+            *   `addItem`: New items will get a new client-side UUID initially.
+            *   `removeItem`: Mark items for deletion or remove them from the local state.
+        *   The `calculateItemBaseTotal` and `calculateTotal` functions (without making charges, as per previous request) will be reused.
+    *   **Notes Section**: Add a `Textarea` for `notes`, pre-filled if notes exist on the invoice.
+    *   **GST Field**: Display the GST percentage (likely read-only, defaulting to 3% as in create invoice).
+    *   **Totals Display**: Reuse the summary display for Subtotal, GST, and Grand Total, dynamically updating as items change.
+    *   **Files Impacted**: `app/invoices/[id]/edit/page.tsx`.
+
+3.  **Implement Save Logic for Edited Invoice (`app/invoices/[id]/edit/page.tsx`):**
+    *   Create an `handleUpdateInvoice` function.
+    *   This function will:
+        *   Perform validations (e.g., at least one valid item, required fields).
+        *   Update the `invoices` table record for the given `invoice.id` with any changed header fields (e.g., `invoice_date`, `notes`, recalculated `subtotal`, `gst_amount`, `grand_total`).
+        *   Update `invoice_items` table:
+            *   For items that existed and were modified: `UPDATE` the corresponding record.
+            *   For items that were removed from the form: `DELETE` from the table.
+            *   For items newly added to the form: `INSERT` into the table, linking to the `invoice_id`.
+        *   Show success/error toasts.
+        *   Redirect to the view invoice page (`/invoices/[id]`) on successful update.
+    *   **Files Impacted**: `app/invoices/[id]/edit/page.tsx`.
+
+4.  **Update Database Types and Interfaces (if necessary due to Edit logic):**
+    *   Ensure `InvoiceItem` interface in `app/create-invoice/page.tsx` (and reused in edit) includes an `id` field that can be the database UUID for existing items or a client-generated UUID for new items. The current `InvoiceItem` in `app/create-invoice/page.tsx` already has an `id: string`.
+    *   No changes to `lib/database.types.ts` are anticipated beyond the previous request's "making charges" removal.
+    *   **Files Impacted**: (Verification) `app/create-invoice/page.tsx`.
+
+### Part 2: Consistent Header for View Invoices Screen
+
+5.  **Create a Layout for Invoices Section or Modify Page:**
+    *   **Option A (New Layout)**: Create `app/invoices/layout.tsx`.
+        *   This layout component will be similar to `app/purchases/layout.tsx`.
+        *   It will include the `<header>` element with the "Sethiya Gold" logo/link, "Dashboard" link, and the user profile dropdown (reusing `useAuth`, `supabase.auth.signOut`, `toast` logic).
+        *   It will wrap `{children}`.
+    *   **Option B (Modify Page)**: Add the header directly into `app/invoices/page.tsx`. This is less ideal for consistency if other pages are added under `/invoices/` later.
+    *   Given the existing pattern with `app/purchases/layout.tsx`, Option A is preferred.
+    *   **Files Impacted**:
+        *   `app/invoices/layout.tsx` (New file)
+        *   The root layout `app/layout.tsx` will automatically apply this to pages under `/invoices/`.
+
+### Part 3: PDF Page Border (Already Covered but Re-confirming)
+
+6.  **Add Page Border to PDF Styling (`app/create-invoice/invoice-pdf.tsx`):**
+    *   In the `styles.page` object, add:
+        ```javascript
+        borderWidth: 1, // or desired thickness, e.g., 0.5 for a thinner line
+        borderColor: '#000000', // or desired color
+        ```
+    *   This style will be applied to the `<Page>` component, creating a border around the entire PDF page content area (respecting existing padding).
+    *   **Files Impacted**: `app/create-invoice/invoice-pdf.tsx`.
+
+### Database Migrations
+
+*   No new database migrations are required for *this specific set of changes* (Edit Invoice, UI Header, PDF Border), assuming the "Making Charges" removal from the previous request (which included migrations) has been completed. If not, the migration from the previous plan (dropping `making_charges` and `total_making_charges`) is a prerequisite.
 </file>
 
 <file path="app/bookings/create/date-picker.tsx">
@@ -3598,21 +3700,57 @@ export default function DashboardLayout({
 <file path="app/invoices/[id]/edit/page.tsx">
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, FileText } from "lucide-react"
+import { ArrowLeft, Save, Trash2 } from "lucide-react"
+import { v4 as uuidv4 } from "uuid"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/components/auth-provider"
+import supabase from "@/lib/supabase"
+
+interface InvoiceItem {
+  id: string
+  name: string
+  quantity: number
+  weight: number
+  pricePerGram: number
+  total: number
+  // For tracking database items
+  isExisting: boolean
+  isDeleted?: boolean
+}
 
 export default function EditInvoicePage() {
   const router = useRouter()
   const params = useParams()
   const { user, isLoading: authLoading } = useAuth()
-  const { toast } = useToast()
+  
+  const [invoiceData, setInvoiceData] = useState<any>(null)
+  const [invoiceItemsData, setInvoiceItemsData] = useState<InvoiceItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split("T")[0],
+    items: [] as InvoiceItem[],
+    gst: 3,
+    notes: "",
+  })
+
+  // Fetch invoice data when component mounts
+  useEffect(() => {
+    if (user && params.id) {
+      fetchInvoiceData()
+    }
+  }, [user, params.id])
 
   // Check if user is authenticated
   useEffect(() => {
@@ -3624,55 +3762,568 @@ export default function EditInvoicePage() {
         variant: "destructive",
       })
     }
-  }, [user, authLoading, router, toast])
+  }, [user, authLoading, router])
+
+  // Fetch invoice and its items
+  const fetchInvoiceData = async () => {
+    if (!user) return
+    
+    try {
+      setIsLoading(true)
+      
+      // Fetch invoice
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('id', params.id)
+        .eq('user_id', user.id)
+        .single()
+      
+      if (invoiceError) throw invoiceError
+      
+      if (!invoiceData) {
+        toast({
+          title: "Invoice not found",
+          description: "The requested invoice could not be found",
+          variant: "destructive",
+        })
+        router.push("/invoices")
+        return
+      }
+      
+      setInvoiceData(invoiceData)
+      
+      // Fetch invoice items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', params.id)
+        .order('created_at', { ascending: true })
+      
+      if (itemsError) throw itemsError
+      
+      // Convert database items to form items
+      const convertedItems = (itemsData || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        weight: item.weight,
+        pricePerGram: item.price_per_gram,
+        total: item.total,
+        isExisting: true
+      }))
+      
+      setInvoiceItemsData(convertedItems)
+      
+      // Set form data
+      setFormData({
+        date: invoiceData.invoice_date,
+        items: convertedItems,
+        gst: invoiceData.gst_percentage,
+        notes: invoiceData.notes || "",
+      })
+    } catch (error: any) {
+      console.error("Error fetching invoice:", error)
+      toast({
+        title: "Error loading invoice",
+        description: error.message || "Could not load invoice details",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle input changes for non-item fields
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+  
+  // Handle item field changes
+  const handleItemChange = (itemId: string, field: string, value: string | number) => {
+    setFormData((prev) => {
+      const newItems = prev.items.map((item) => {
+        if (item.id === itemId) {
+          const updatedItem = {
+            ...item,
+            [field]: field === "name" ? value : Number(value),
+          }
+          
+          // Recalculate total for this item
+          updatedItem.total = calculateItemBaseTotal(
+            updatedItem.quantity,
+            updatedItem.weight,
+            updatedItem.pricePerGram
+          )
+          
+          return updatedItem
+        }
+        return item
+      })
+      
+      return { ...prev, items: newItems }
+    })
+  }
+  
+  // Add a new item to the list
+  const addItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        {
+          id: uuidv4(),
+          name: "",
+          quantity: 1,
+          weight: 0,
+          pricePerGram: prev.items.length > 0 ? prev.items[0].pricePerGram : 6450,
+          total: 0,
+          isExisting: false
+        },
+      ],
+    }))
+  }
+  
+  // Remove an item from the list
+  const removeItem = (itemId: string) => {
+    // Don't remove if it's the last item
+    if (formData.items.length <= 1) {
+      return
+    }
+    
+    setFormData((prev) => {
+      const itemToRemove = prev.items.find(item => item.id === itemId)
+      
+      if (itemToRemove?.isExisting) {
+        // For existing items, mark as deleted but keep in the array for tracking
+        return {
+          ...prev,
+          items: prev.items.map(item => 
+            item.id === itemId 
+              ? { ...item, isDeleted: true } 
+              : item
+          )
+        }
+      } else {
+        // For new items, just remove from the array
+        return {
+          ...prev,
+          items: prev.items.filter((item) => item.id !== itemId),
+        }
+      }
+    })
+  }
+
+  // Calculate base total for a single item
+  const calculateItemBaseTotal = (quantity: number, weight: number, pricePerGram: number) => {
+    return (quantity * weight * pricePerGram) / 10 // Price per 10 grams
+  }
+
+  // Calculate overall totals
+  const calculateTotal = () => {
+    const { items, gst } = formData
+    
+    // Only include non-deleted items in calculations
+    const activeItems = items.filter(item => !item.isDeleted)
+    
+    // Calculate base value (gold value) for all items
+    const itemsBaseTotal = activeItems.reduce((sum, item) => 
+      sum + calculateItemBaseTotal(item.quantity, item.weight, item.pricePerGram), 0
+    )
+    
+    // Subtotal is the base value of all items
+    const subtotal = itemsBaseTotal
+    
+    // Grand total before GST
+    const grandTotalBeforeGst = subtotal
+    
+    // Calculate GST on the grand total
+    const gstAmount = grandTotalBeforeGst * (gst / 100)
+    
+    // Total including GST
+    const total = grandTotalBeforeGst + gstAmount
+    
+    return {
+      itemsBaseTotal: itemsBaseTotal.toFixed(2),
+      subtotal: subtotal.toFixed(2),
+      grandTotalBeforeGst: grandTotalBeforeGst.toFixed(2),
+      gstAmount: gstAmount.toFixed(2),
+      total: total.toFixed(2),
+    }
+  }
+
+  // Handle form submission for updating invoice
+  const handleUpdateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!user || !invoiceData) {
+      toast({
+        title: "Error",
+        description: "User not authenticated or invoice data missing",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    // Validate that we have at least one valid item
+    const activeItems = formData.items.filter(item => !item.isDeleted)
+    
+    if (activeItems.length === 0 || activeItems.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in all required item fields with valid values",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    try {
+      setIsSaving(true)
+      
+      // Calculate totals
+      const calculatedTotals = calculateTotal()
+      
+      // 1. Update the main invoice record
+      const { error: invoiceError } = await supabase
+        .from('invoices')
+        .update({
+          invoice_date: formData.date,
+          notes: formData.notes,
+          subtotal: Number(calculatedTotals.subtotal),
+          gst_percentage: formData.gst,
+          gst_amount: Number(calculatedTotals.gstAmount),
+          grand_total: Number(calculatedTotals.total),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invoiceData.id)
+        .eq('user_id', user.id)
+      
+      if (invoiceError) throw invoiceError
+      
+      // 2. Handle invoice items
+      
+      // 2.1 Update existing items that were modified
+      const itemsToUpdate = formData.items.filter(item => 
+        item.isExisting && !item.isDeleted
+      )
+      
+      for (const item of itemsToUpdate) {
+        const { error: updateError } = await supabase
+          .from('invoice_items')
+          .update({
+            name: item.name,
+            quantity: item.quantity,
+            weight: item.weight,
+            price_per_gram: item.pricePerGram,
+            total: item.total
+          })
+          .eq('id', item.id)
+          .eq('user_id', user.id)
+        
+        if (updateError) throw updateError
+      }
+      
+      // 2.2 Delete items that were removed
+      const itemsToDelete = formData.items.filter(item => 
+        item.isExisting && item.isDeleted
+      )
+      
+      for (const item of itemsToDelete) {
+        const { error: deleteError } = await supabase
+          .from('invoice_items')
+          .delete()
+          .eq('id', item.id)
+          .eq('user_id', user.id)
+        
+        if (deleteError) throw deleteError
+      }
+      
+      // 2.3 Insert new items
+      const itemsToInsert = formData.items
+        .filter(item => !item.isExisting && !item.isDeleted)
+        .map(item => ({
+          invoice_id: invoiceData.id,
+          user_id: user.id,
+          name: item.name,
+          quantity: item.quantity,
+          weight: item.weight,
+          price_per_gram: item.pricePerGram,
+          total: item.total
+        }))
+      
+      if (itemsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('invoice_items')
+          .insert(itemsToInsert)
+        
+        if (insertError) throw insertError
+      }
+      
+      // Success message and redirect
+      toast({
+        title: "Invoice updated",
+        description: "The invoice has been successfully updated.",
+        variant: "default",
+      })
+      
+      // Navigate to invoice detail page
+      router.push(`/invoices/${invoiceData.id}`)
+    } catch (error: any) {
+      console.error("Error updating invoice:", error)
+      toast({
+        title: "Error updating invoice",
+        description: error.message || "An error occurred while updating the invoice.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // Show loading state or nothing while checking authentication
   if (authLoading || !user) {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>
   }
+  
+  // Show loading state while fetching data
+  if (isLoading) {
+    return (
+      <div className="flex items-center">
+        <Link href={`/invoices/${params.id}`}>
+          <Button variant="ghost" size="sm" className="gap-1">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Invoice
+          </Button>
+        </Link>
+        <h1 className="ml-4 text-xl font-semibold md:text-2xl">Loading Invoice...</h1>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <FileText className="h-6 w-6 text-amber-500" />
-          <span className="text-xl">Sethiya Gold</span>
+    <div className="flex items-center flex-col gap-4">
+      <div className="flex items-center self-start w-full">
+        <Link href={`/invoices/${params.id}`}>
+          <Button variant="ghost" size="sm" className="gap-1">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Invoice
+          </Button>
         </Link>
-      </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center">
-          <Link href={`/invoices/${params.id}`}>
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Invoice
-            </Button>
-          </Link>
-          <h1 className="ml-4 text-xl font-semibold md:text-2xl">Edit Invoice</h1>
-        </div>
+        <h1 className="ml-4 text-xl font-semibold md:text-2xl">Edit Invoice #{invoiceData?.invoice_number}</h1>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Edit Invoice - Coming Soon</CardTitle>
-            <CardDescription>
-              The edit invoice functionality is currently under development and will be available soon.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center p-6">
-            <p className="mb-6 text-center text-muted-foreground">
-              This feature is planned for a future update. For now, you can view and print invoices,
-              or create new ones.
-            </p>
-            <div className="flex gap-4">
-              <Link href={`/invoices/${params.id}`}>
-                <Button variant="outline">Return to Invoice</Button>
-              </Link>
-              <Link href="/invoices">
-                <Button>Back to Invoice List</Button>
-              </Link>
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Invoice Details</CardTitle>
+          <CardDescription>Edit the invoice information below</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleUpdateInvoice}>
+          <CardContent className="space-y-6">
+            {/* Customer Info - Read Only */}
+            <div className="rounded-md border p-3 text-sm">
+              <p className="font-medium">{invoiceData?.customer_name_snapshot}</p>
+              {invoiceData?.customer_address_snapshot && (
+                <p className="text-muted-foreground">{invoiceData?.customer_address_snapshot}</p>
+              )}
+              <p className="text-muted-foreground">
+                {invoiceData?.customer_phone_snapshot && `Phone: ${invoiceData?.customer_phone_snapshot}`}
+                {invoiceData?.customer_phone_snapshot && invoiceData?.customer_email_snapshot && " | "}
+                {invoiceData?.customer_email_snapshot && `Email: ${invoiceData?.customer_email_snapshot}`}
+              </p>
+            </div>
+
+            {/* Date Field */}
+            <div className="space-y-2">
+              <Label htmlFor="date">Invoice Date</Label>
+              <Input 
+                id="date" 
+                name="date" 
+                type="date" 
+                value={formData.date} 
+                onChange={handleChange} 
+                required 
+              />
+            </div>
+
+            <Separator />
+
+            {/* Items Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Jewelry Items</h3>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addItem}
+                  className="gap-1"
+                >
+                  Add Item
+                </Button>
+              </div>
+
+              {formData.items
+                .filter(item => !item.isDeleted)
+                .map((item, index) => (
+                <div key={item.id} className="rounded-md border p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">Item {index + 1}</h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeItem(item.id)}
+                      disabled={formData.items.filter(i => !i.isDeleted).length <= 1}
+                      className="h-8 w-8 rounded-full p-0"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <span className="sr-only">Remove</span>
+                    </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`item-name-${item.id}`}>Jewelry Item Name</Label>
+                      <Input
+                        id={`item-name-${item.id}`}
+                        value={item.name}
+                        onChange={(e) => handleItemChange(item.id, "name", e.target.value)}
+                        placeholder="Enter jewelry item name"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <Label htmlFor={`item-quantity-${item.id}`}>Quantity</Label>
+                        <Input
+                          id={`item-quantity-${item.id}`}
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(item.id, "quantity", e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`item-weight-${item.id}`}>Weight (in grams)</Label>
+                        <Input
+                          id={`item-weight-${item.id}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Enter weight in grams"
+                          value={item.weight || ""}
+                          onChange={(e) => handleItemChange(item.id, "weight", e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`item-price-${item.id}`}>Price per 10 grams (₹)</Label>
+                        <Input
+                          id={`item-price-${item.id}`}
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Enter price per 10 grams"
+                          value={item.pricePerGram}
+                          onChange={(e) => handleItemChange(item.id, "pricePerGram", e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-2 flex flex-col justify-end">
+                        <div className="text-right">
+                          <div className="text-sm text-muted-foreground">Base Value: ₹{calculateItemBaseTotal(item.quantity, item.weight, item.pricePerGram).toFixed(2)}</div>
+                          <div className="font-medium">Item Total: ₹{item.total.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Notes Field */}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                placeholder="Add any additional notes or instructions"
+                value={formData.notes}
+                onChange={handleChange}
+                rows={3}
+              />
+            </div>
+
+            {/* GST Field - Read Only */}
+            <div className="space-y-2">
+              <Label htmlFor="gst">GST (%)</Label>
+              <Input
+                id="gst"
+                name="gst"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.gst}
+                disabled
+              />
+              <p className="text-sm text-muted-foreground">GST for jewelry is fixed at 3%</p>
+            </div>
+
+            {/* Totals Display */}
+            <div className="rounded-lg bg-muted p-4">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Items Base Total:</span>
+                  <span>₹{calculateTotal().itemsBaseTotal}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Subtotal (Before GST):</span>
+                  <span>₹{calculateTotal().grandTotalBeforeGst}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST ({formData.gst}%):</span>
+                  <span>₹{calculateTotal().gstAmount}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between font-bold">
+                  <span>Total Amount:</span>
+                  <span>₹{calculateTotal().total}</span>
+                </div>
+              </div>
             </div>
           </CardContent>
-        </Card>
-      </main>
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" type="button" onClick={() => router.push(`/invoices/${params.id}`)} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button type="submit" className="bg-amber-600 hover:bg-amber-700" disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <svg className="mr-2 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving Changes...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   )
 }
@@ -3710,339 +4361,6 @@ export default function Loading() {
           <Skeleton className="h-10 w-28" />
         </div>
         <Skeleton className="h-[70vh] w-full" />
-      </main>
-    </div>
-  )
-}
-</file>
-
-<file path="app/invoices/[id]/page.tsx">
-"use client"
-
-import { useState, useEffect, useRef } from "react"
-import Link from "next/link"
-import { useRouter, useParams } from "next/navigation"
-import { useReactToPrint } from "react-to-print"
-import dynamic from "next/dynamic"
-import { ArrowLeft, Save, Printer, Edit, DollarSign } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useToast } from "@/components/ui/use-toast"
-import { useAuth } from "@/components/auth-provider"
-import supabase from "@/lib/supabase"
-import { InvoicePreview, InvoiceData } from "@/app/create-invoice/invoice-preview"
-
-// Dynamically import PDF components with ssr: false to ensure they only load on the client
-const PDFDownloadLinkWrapper = dynamic(
-  () => import("@/app/create-invoice/pdf-download-link-wrapper").then((mod) => mod.PDFDownloadLinkWrapper),
-  { ssr: false },
-)
-
-interface InvoiceItem {
-  id: string
-  name: string
-  quantity: number
-  weight: number
-  price_per_gram: number
-  total: number
-}
-
-export default function InvoiceDetailPage() {
-  const router = useRouter()
-  const params = useParams()
-  const { user, isLoading: authLoading } = useAuth()
-  const { toast } = useToast()
-  
-  const [invoice, setInvoice] = useState<any>(null)
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-  const [isBrowser, setIsBrowser] = useState(false)
-  
-  const invoiceRef = useRef<HTMLDivElement>(null)
-  
-  // Check if user is authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/")
-      toast({
-        title: "Authentication required",
-        description: "Please log in to view this invoice",
-        variant: "destructive",
-      })
-    }
-  }, [user, authLoading, router, toast])
-  
-  // Set isBrowser to true once component mounts
-  useEffect(() => {
-    setIsBrowser(true)
-  }, [])
-  
-  // Fetch invoice data
-  useEffect(() => {
-    if (user && params.id) {
-      fetchInvoiceData()
-    }
-  }, [user, params.id])
-  
-  // Fetch invoice and its items
-  const fetchInvoiceData = async () => {
-    if (!user) return
-    
-    try {
-      setIsLoading(true)
-      
-      // Fetch invoice
-      const { data: invoiceData, error: invoiceError } = await supabase
-        .from('invoices')
-        .select('*')
-        .eq('id', params.id)
-        .eq('user_id', user.id)
-        .single()
-      
-      if (invoiceError) throw invoiceError
-      
-      if (!invoiceData) {
-        toast({
-          title: "Invoice not found",
-          description: "The requested invoice could not be found",
-          variant: "destructive",
-        })
-        router.push("/invoices")
-        return
-      }
-      
-      setInvoice(invoiceData)
-      
-      // Fetch invoice items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('invoice_items')
-        .select('*')
-        .eq('invoice_id', params.id)
-        .order('created_at', { ascending: true })
-      
-      if (itemsError) throw itemsError
-      
-      setInvoiceItems(itemsData || [])
-    } catch (error: any) {
-      console.error("Error fetching invoice:", error)
-      toast({
-        title: "Error loading invoice",
-        description: error.message || "Could not load invoice details",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-  
-  // Mark invoice as paid
-  const markAsPaid = async () => {
-    if (!user || !invoice) return
-    
-    try {
-      setIsUpdating(true)
-      
-      const { error } = await supabase
-        .from('invoices')
-        .update({ status: 'paid' })
-        .eq('id', invoice.id)
-        .eq('user_id', user.id)
-      
-      if (error) throw error
-      
-      // Update local state
-      setInvoice({ ...invoice, status: 'paid' })
-      
-      toast({
-        title: "Invoice updated",
-        description: "Invoice has been marked as paid",
-        variant: "default",
-      })
-    } catch (error: any) {
-      console.error("Error updating invoice:", error)
-      toast({
-        title: "Update failed",
-        description: error.message || "Could not update invoice status",
-        variant: "destructive",
-      })
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-  
-  // Format invoice data for the preview component
-  const formatInvoiceDataForPreview = (): InvoiceData => {
-    return {
-      invoiceNumber: invoice.invoice_number,
-      date: formatDate(invoice.invoice_date),
-      customerName: invoice.customer_name_snapshot,
-      customerAddress: invoice.customer_address_snapshot,
-      customerPhone: invoice.customer_phone_snapshot,
-      customerEmail: invoice.customer_email_snapshot,
-      firmName: invoice.firm_name_snapshot,
-      firmAddress: invoice.firm_address_snapshot,
-      firmPhone: invoice.firm_phone_snapshot,
-      firmGstin: invoice.firm_gstin_snapshot,
-      items: invoiceItems.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        weight: item.weight,
-        pricePerGram: item.price_per_gram,
-        total: item.total,
-      })),
-      subtotal: invoice.subtotal,
-      gstPercentage: invoice.gst_percentage,
-      gstAmount: invoice.gst_amount,
-      total: invoice.grand_total,
-    }
-  }
-  
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
-  
-  // Handle printing
-  const handlePrint = useReactToPrint({
-    // @ts-ignore - TypeScript definition seems incomplete
-    content: () => invoiceRef.current,
-    documentTitle: `Invoice-${invoice?.invoice_number}`,
-  })
-  
-  // Show loading state or nothing while checking authentication
-  if (authLoading || !user) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
-  }
-  
-  // Show loading state while fetching data
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <span className="text-xl">Sethiya Gold</span>
-          </Link>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-          <div className="flex items-center">
-            <Link href="/invoices">
-              <Button variant="ghost" size="sm" className="gap-1">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Invoices
-              </Button>
-            </Link>
-            <Skeleton className="ml-4 h-8 w-48" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Skeleton className="h-10 w-28" />
-            <Skeleton className="h-10 w-28" />
-            <Skeleton className="h-10 w-28" />
-          </div>
-          <Skeleton className="h-[60vh] w-full" />
-        </main>
-      </div>
-    )
-  }
-  
-  // If no invoice found
-  if (!invoice) {
-    return (
-      <div className="flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <span className="text-xl">Sethiya Gold</span>
-          </Link>
-        </header>
-        <main className="flex flex-1 flex-col items-center justify-center">
-          <h1 className="text-2xl font-bold">Invoice Not Found</h1>
-          <p className="mb-4 text-muted-foreground">The requested invoice could not be found</p>
-          <Link href="/invoices">
-            <Button>Back to Invoices</Button>
-          </Link>
-        </main>
-      </div>
-    )
-  }
-  
-  return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <span className="text-xl">Sethiya Gold</span>
-        </Link>
-      </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center">
-          <Link href="/invoices">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Invoices
-            </Button>
-          </Link>
-          <h1 className="ml-4 text-xl font-semibold md:text-2xl">
-            Invoice #{invoice.invoice_number}
-          </h1>
-        </div>
-        
-        <div className="flex flex-wrap justify-end gap-2">
-          {invoice.status !== 'paid' && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={isUpdating}>
-                  <DollarSign className="mr-2 h-4 w-4" />
-                  Mark as Paid
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Mark Invoice as Paid?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will update the invoice status to "Paid". This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={markAsPaid}>Continue</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          
-          <Link href={`/invoices/${invoice.id}/edit`}>
-            <Button variant="outline">
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Invoice
-            </Button>
-          </Link>
-          
-          {isBrowser && (
-            <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Print Invoice
-            </Button>
-          )}
-          
-          {isBrowser && (
-            <PDFDownloadLinkWrapper
-              invoiceData={formatInvoiceDataForPreview()}
-              onStartGeneration={() => setIsGeneratingPDF(true)}
-              onFinishGeneration={() => setIsGeneratingPDF(false)}
-            />
-          )}
-        </div>
-        
-        <div ref={invoiceRef}>
-          <InvoicePreview invoiceData={formatInvoiceDataForPreview()} />
-        </div>
       </main>
     </div>
   )
@@ -4296,40 +4614,32 @@ export default function InvoicesPage() {
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <FileText className="h-6 w-6 text-amber-500" />
-            <span className="text-xl">Sethiya Gold</span>
-          </Link>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
-            <Skeleton className="h-10 w-32" />
-          </div>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <Skeleton className="h-10 flex-1" />
-            <Skeleton className="h-10 w-40" />
-            <Skeleton className="h-10 w-40" />
-            <Skeleton className="h-10 w-20" />
-          </div>
-          <Card>
-            <CardHeader className="pb-2">
-              <Skeleton className="h-6 w-36" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Array(5).fill(0).map((_, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-14 flex-1" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
+      <>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-20" />
+        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-6 w-36" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array(5).fill(0).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-14 flex-1" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </>
     )
   }
 
@@ -4339,148 +4649,133 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <FileText className="h-6 w-6 text-amber-500" />
-          <span className="text-xl">Sethiya Gold</span>
-        </Link>
-      </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
-          <Link href="/create-invoice">
-            <Button className="bg-amber-600 hover:bg-amber-700">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create New Invoice
-            </Button>
-          </Link>
-        </div>
-
-        {/* Search and Filter Controls */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search by customer name..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              className="w-40"
-              placeholder="Start Date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-            <span>to</span>
-            <Input
-              type="date"
-              className="w-40"
-              placeholder="End Date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggleSortDirection}
-            title={`Sort by date ${sortDirection === 'asc' ? 'oldest first' : 'newest first'}`}
-          >
-            <ArrowDownUp className="h-4 w-4" />
+    <>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
+        <Link href="/create-invoice">
+          <Button className="bg-amber-600 hover:bg-amber-700">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create New Invoice
           </Button>
-        </div>
+        </Link>
+      </div>
 
-        {/* Invoices Table */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Invoice List</CardTitle>
-            <CardDescription>
-              Showing {invoices.length} of {totalCount} invoices
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {invoices.length === 0 ? (
-              <div className="flex h-24 items-center justify-center rounded-md border border-dashed">
-                <p className="text-muted-foreground">No invoices found</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Invoice Number</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by customer name..."
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            className="w-40"
+            placeholder="Start Date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <span>to</span>
+          <Input
+            type="date"
+            className="w-40"
+            placeholder="End Date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleSortDirection}
+          title={`Sort by date ${sortDirection === 'asc' ? 'oldest first' : 'newest first'}`}
+        >
+          <ArrowDownUp className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Invoices Table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Invoice List</CardTitle>
+          <CardDescription>
+            Showing {invoices.length} of {totalCount} invoices
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invoices.length === 0 ? (
+            <div className="flex h-24 items-center justify-center rounded-md border border-dashed">
+              <p className="text-muted-foreground">No invoices found</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice Number</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                    <TableCell>{invoice.customer_name_snapshot}</TableCell>
+                    <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
+                    <TableCell>{formatCurrency(invoice.grand_total)}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={invoice.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/invoices/${invoice.id}`}>
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoices.map((invoice) => (
-                    <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                      <TableCell>{invoice.customer_name_snapshot}</TableCell>
-                      <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
-                      <TableCell>{formatCurrency(invoice.grand_total)}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={invoice.status} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/invoices/${invoice.id}`}>
-                            <Button variant="outline" size="sm">
-                              View
-                            </Button>
-                          </Link>
-                          <Link href={`/invoices/${invoice.id}/edit`}>
-                            <Button variant="outline" size="sm">
-                              Edit
-                            </Button>
-                          </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-          {totalPages > 1 && (
-            <CardFooter className="flex items-center justify-between border-t p-4">
-              <div className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToPreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Previous Page</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Next Page</span>
-                </Button>
-              </div>
-            </CardFooter>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </Card>
-      </main>
-    </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 py-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous Page</span>
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Next Page</span>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   )
 }
 </file>
@@ -14809,6 +15104,17 @@ export function cn(...inputs: ClassValue[]) {
 }
 </file>
 
+<file path="migrations/remove_making_charges.sql">
+-- Migration: Remove Making Charges columns
+-- Description: Removes the making_charges column from invoice_items and total_making_charges from invoices table
+
+-- Drop making_charges column from invoice_items table
+ALTER TABLE invoice_items DROP COLUMN IF EXISTS making_charges;
+
+-- Drop total_making_charges column from invoices table
+ALTER TABLE invoices DROP COLUMN IF EXISTS total_making_charges;
+</file>
+
 <file path="public/placeholder-logo.svg">
 <svg xmlns="http://www.w3.org/2000/svg" width="215" height="48" fill="none"><path fill="#000" d="M57.588 9.6h6L73.828 38h-5.2l-2.36-6.88h-11.36L52.548 38h-5.2l10.24-28.4Zm7.16 17.16-4.16-12.16-4.16 12.16h8.32Zm23.694-2.24c-.186-1.307-.706-2.32-1.56-3.04-.853-.72-1.866-1.08-3.04-1.08-1.68 0-2.986.613-3.92 1.84-.906 1.227-1.36 2.947-1.36 5.16s.454 3.933 1.36 5.16c.934 1.227 2.24 1.84 3.92 1.84 1.254 0 2.307-.373 3.16-1.12.854-.773 1.387-1.867 1.6-3.28l5.12.24c-.186 1.68-.733 3.147-1.64 4.4-.906 1.227-2.08 2.173-3.52 2.84-1.413.667-2.986 1-4.72 1-2.08 0-3.906-.453-5.48-1.36-1.546-.907-2.76-2.2-3.64-3.88-.853-1.68-1.28-3.627-1.28-5.84 0-2.24.427-4.187 1.28-5.84.88-1.68 2.094-2.973 3.64-3.88 1.574-.907 3.4-1.36 5.48-1.36 1.68 0 3.227.32 4.64.96 1.414.64 2.56 1.56 3.44 2.76.907 1.2 1.454 2.6 1.64 4.2l-5.12.28Zm11.486-7.72.12 3.4c.534-1.227 1.307-2.173 2.32-2.84 1.04-.693 2.267-1.04 3.68-1.04 1.494 0 2.76.387 3.8 1.16 1.067.747 1.827 1.813 2.28 3.2.507-1.44 1.294-2.52 2.36-3.24 1.094-.747 2.414-1.12 3.96-1.12 1.414 0 2.64.307 3.68.92s1.84 1.52 2.4 2.72c.56 1.2.84 2.667.84 4.4V38h-4.96V25.92c0-1.813-.293-3.187-.88-4.12-.56-.96-1.413-1.44-2.56-1.44-.906 0-1.68.213-2.32.64-.64.427-1.133 1.053-1.48 1.88-.32.827-.48 1.84-.48 3.04V38h-4.56V25.92c0-1.2-.133-2.213-.4-3.04-.24-.827-.626-1.453-1.16-1.88-.506-.427-1.133-.64-1.88-.64-.906 0-1.68.227-2.32.68-.64.427-1.133 1.053-1.48 1.88-.32.827-.48 1.827-.48 3V38h-4.96V16.8h4.48Zm26.723 10.6c0-2.24.427-4.187 1.28-5.84.854-1.68 2.067-2.973 3.64-3.88 1.574-.907 3.4-1.36 5.48-1.36 1.84 0 3.494.413 4.96 1.24 1.467.827 2.64 2.08 3.52 3.76.88 1.653 1.347 3.693 1.4 6.12v1.32h-15.08c.107 1.813.614 3.227 1.52 4.24.907.987 2.134 1.48 3.68 1.48.987 0 1.88-.253 2.68-.76a4.803 4.803 0 0 0 1.84-2.2l5.08.36c-.64 2.027-1.84 3.64-3.6 4.84-1.733 1.173-3.733 1.76-6 1.76-2.08 0-3.906-.453-5.48-1.36-1.573-.907-2.786-2.2-3.64-3.88-.853-1.68-1.28-3.627-1.28-5.84Zm15.16-2.04c-.213-1.733-.76-3.013-1.64-3.84-.853-.827-1.893-1.24-3.12-1.24-1.44 0-2.6.453-3.48 1.36-.88.88-1.44 2.12-1.68 3.72h9.92ZM163.139 9.6V38h-5.04V9.6h5.04Zm8.322 7.2.24 5.88-.64-.36c.32-2.053 1.094-3.56 2.32-4.52 1.254-.987 2.787-1.48 4.6-1.48 2.32 0 4.107.733 5.36 2.2 1.254 1.44 1.88 3.387 1.88 5.84V38h-4.96V25.92c0-1.253-.12-2.28-.36-3.08-.24-.8-.64-1.413-1.2-1.84-.533-.427-1.253-.64-2.16-.64-1.44 0-2.573.48-3.4 1.44-.8.933-1.2 2.307-1.2 4.12V38h-4.96V16.8h4.48Zm30.003 7.72c-.186-1.307-.706-2.32-1.56-3.04-.853-.72-1.866-1.08-3.04-1.08-1.68 0-2.986.613-3.92 1.84-.906 1.227-1.36 2.947-1.36 5.16s.454 3.933 1.36 5.16c.934 1.227 2.24 1.84 3.92 1.84 1.254 0 2.307-.373 3.16-1.12.854-.773 1.387-1.867 1.6-3.28l5.12.24c-.186 1.68-.733 3.147-1.64 4.4-.906 1.227-2.08 2.173-3.52 2.84-1.413.667-2.986 1-4.72 1-2.08 0-3.906-.453-5.48-1.36-1.546-.907-2.76-2.2-3.64-3.88-.853-1.68-1.28-3.627-1.28-5.84 0-2.24.427-4.187 1.28-5.84.88-1.68 2.094-2.973 3.64-3.88 1.574-.907 3.4-1.36 5.48-1.36 1.68 0 3.227.32 4.64.96 1.414.64 2.56 1.56 3.44 2.76.907 1.2 1.454 2.6 1.64 4.2l-5.12.28Zm11.443 8.16V38h-5.6v-5.32h5.6Z"/><path fill="#171717" fill-rule="evenodd" d="m7.839 40.783 16.03-28.054L20 6 0 40.783h7.839Zm8.214 0H40L27.99 19.894l-4.02 7.032 3.976 6.914H20.02l-3.967 6.943Z" clip-rule="evenodd"/></svg>
 </file>
@@ -15517,6 +15823,318 @@ export default function CustomersPage() {
         </Tabs>
       </main>
     </div>
+  )
+}
+</file>
+
+<file path="app/invoices/[id]/page.tsx">
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import Link from "next/link"
+import { useRouter, useParams } from "next/navigation"
+import { useReactToPrint } from "react-to-print"
+import dynamic from "next/dynamic"
+import { ArrowLeft, Save, Printer, Edit, DollarSign } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/components/auth-provider"
+import supabase from "@/lib/supabase"
+import { InvoicePreview, InvoiceData } from "@/app/create-invoice/invoice-preview"
+
+// Dynamically import PDF components with ssr: false to ensure they only load on the client
+const PDFDownloadLinkWrapper = dynamic(
+  () => import("@/app/create-invoice/pdf-download-link-wrapper").then((mod) => mod.PDFDownloadLinkWrapper),
+  { ssr: false },
+)
+
+interface InvoiceItem {
+  id: string
+  name: string
+  quantity: number
+  weight: number
+  price_per_gram: number
+  total: number
+}
+
+export default function InvoiceDetailPage() {
+  const router = useRouter()
+  const params = useParams()
+  const { user, isLoading: authLoading } = useAuth()
+  const { toast } = useToast()
+  
+  const [invoice, setInvoice] = useState<any>(null)
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [isBrowser, setIsBrowser] = useState(false)
+  
+  const invoiceRef = useRef<HTMLDivElement>(null)
+  
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/")
+      toast({
+        title: "Authentication required",
+        description: "Please log in to view this invoice",
+        variant: "destructive",
+      })
+    }
+  }, [user, authLoading, router, toast])
+  
+  // Set isBrowser to true once component mounts
+  useEffect(() => {
+    setIsBrowser(true)
+  }, [])
+  
+  // Fetch invoice data
+  useEffect(() => {
+    if (user && params.id) {
+      fetchInvoiceData()
+    }
+  }, [user, params.id])
+  
+  // Fetch invoice and its items
+  const fetchInvoiceData = async () => {
+    if (!user) return
+    
+    try {
+      setIsLoading(true)
+      
+      // Fetch invoice
+      const { data: invoiceData, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('id', params.id)
+        .eq('user_id', user.id)
+        .single()
+      
+      if (invoiceError) throw invoiceError
+      
+      if (!invoiceData) {
+        toast({
+          title: "Invoice not found",
+          description: "The requested invoice could not be found",
+          variant: "destructive",
+        })
+        router.push("/invoices")
+        return
+      }
+      
+      setInvoice(invoiceData)
+      
+      // Fetch invoice items
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', params.id)
+        .order('created_at', { ascending: true })
+      
+      if (itemsError) throw itemsError
+      
+      setInvoiceItems(itemsData || [])
+    } catch (error: any) {
+      console.error("Error fetching invoice:", error)
+      toast({
+        title: "Error loading invoice",
+        description: error.message || "Could not load invoice details",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
+  // Mark invoice as paid
+  const markAsPaid = async () => {
+    if (!user || !invoice) return
+    
+    try {
+      setIsUpdating(true)
+      
+      const { error } = await supabase
+        .from('invoices')
+        .update({ status: 'paid' })
+        .eq('id', invoice.id)
+        .eq('user_id', user.id)
+      
+      if (error) throw error
+      
+      // Update local state
+      setInvoice({ ...invoice, status: 'paid' })
+      
+      toast({
+        title: "Invoice updated",
+        description: "Invoice has been marked as paid",
+        variant: "default",
+      })
+    } catch (error: any) {
+      console.error("Error updating invoice:", error)
+      toast({
+        title: "Update failed",
+        description: error.message || "Could not update invoice status",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+  
+  // Format invoice data for the preview component
+  const formatInvoiceDataForPreview = (): InvoiceData => {
+    return {
+      invoiceNumber: invoice.invoice_number,
+      date: formatDate(invoice.invoice_date),
+      customerName: invoice.customer_name_snapshot,
+      customerAddress: invoice.customer_address_snapshot,
+      customerPhone: invoice.customer_phone_snapshot,
+      customerEmail: invoice.customer_email_snapshot,
+      firmName: invoice.firm_name_snapshot,
+      firmAddress: invoice.firm_address_snapshot,
+      firmPhone: invoice.firm_phone_snapshot,
+      firmGstin: invoice.firm_gstin_snapshot,
+      items: invoiceItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        weight: item.weight,
+        pricePerGram: item.price_per_gram,
+        total: item.total,
+      })),
+      subtotal: invoice.subtotal,
+      gstPercentage: invoice.gst_percentage,
+      gstAmount: invoice.gst_amount,
+      total: invoice.grand_total,
+    }
+  }
+  
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+  
+  // Handle printing
+  const handlePrint = useReactToPrint({
+    // @ts-ignore - TypeScript definition seems incomplete
+    content: () => invoiceRef.current,
+    documentTitle: `Invoice-${invoice?.invoice_number}`,
+  })
+  
+  // Show loading state or nothing while checking authentication
+  if (authLoading || !user) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
+  }
+  
+  // Show loading state while fetching data
+  if (isLoading) {
+    return (
+      <>
+        <div className="flex items-center">
+          <Link href="/invoices">
+            <Button variant="ghost" size="sm" className="gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Invoices
+            </Button>
+          </Link>
+          <Skeleton className="ml-4 h-8 w-48" />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28" />
+        </div>
+        <Skeleton className="h-[60vh] w-full" />
+      </>
+    )
+  }
+  
+  // If no invoice found
+  if (!invoice) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <h1 className="text-2xl font-bold">Invoice Not Found</h1>
+        <p className="mb-4 text-muted-foreground">The requested invoice could not be found</p>
+        <Link href="/invoices">
+          <Button>Back to Invoices</Button>
+        </Link>
+      </div>
+    )
+  }
+  
+  return (
+    <>
+      <div className="flex items-center">
+        <Link href="/invoices">
+          <Button variant="ghost" size="sm" className="gap-1">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Invoices
+          </Button>
+        </Link>
+        <h1 className="ml-4 text-xl font-semibold md:text-2xl">
+          Invoice #{invoice.invoice_number}
+        </h1>
+      </div>
+      
+      <div className="flex flex-wrap justify-end gap-2">
+        {invoice.status !== 'paid' && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={isUpdating}>
+                <DollarSign className="mr-2 h-4 w-4" />
+                Mark as Paid
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Mark Invoice as Paid?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will update the invoice status to "Paid". This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={markAsPaid}>Continue</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+        
+        <Link href={`/invoices/${invoice.id}/edit`}>
+          <Button variant="outline">
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Invoice
+          </Button>
+        </Link>
+        
+        {isBrowser && (
+          <Button variant="outline" onClick={handlePrint}>
+            <Printer className="mr-2 h-4 w-4" />
+            Print Invoice
+          </Button>
+        )}
+        
+        {isBrowser && (
+          <PDFDownloadLinkWrapper
+            invoiceData={formatInvoiceDataForPreview()}
+            onStartGeneration={() => setIsGeneratingPDF(true)}
+            onFinishGeneration={() => setIsGeneratingPDF(false)}
+          />
+        )}
+      </div>
+      
+      <div ref={invoiceRef}>
+        <InvoicePreview invoiceData={formatInvoiceDataForPreview()} />
+      </div>
+    </>
   )
 }
 </file>
@@ -18241,849 +18859,6 @@ For support, please contact [support@sethiyagold.com](mailto:support@sethiyagold
 Made with ❤️ for Indian jewelry businesses
 </file>
 
-<file path="app/create-invoice/page.tsx">
-"use client"
-
-import type React from "react"
-import { v4 as uuidv4 } from "uuid"
-
-import { useState, useRef, useEffect } from "react"
-import Link from "next/link"
-import { ArrowLeft, FileText, Printer, Save, Plus, Trash2 } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useReactToPrint } from "react-to-print"
-import dynamic from "next/dynamic"
-
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { InvoicePreview } from "@/app/create-invoice/invoice-preview"
-import { toast } from "@/components/ui/use-toast"
-import { useAuth } from "@/components/auth-provider"
-import supabase from "@/lib/supabase"
-import { AddCustomerModal } from "@/app/create-invoice/components/add-customer-modal"
-
-// Dynamically import PDF components with ssr: false to ensure they only load on the client
-const PDFDownloadLinkWrapper = dynamic(
-  () => import("@/app/create-invoice/pdf-download-link-wrapper").then((mod) => mod.PDFDownloadLinkWrapper),
-  { ssr: false },
-)
-
-// Item interface for form state
-interface InvoiceItem {
-  id: string
-  name: string
-  quantity: number
-  weight: number
-  pricePerGram: number
-  total: number
-}
-
-// Customer interface
-interface Customer {
-  id: string
-  name: string
-  address?: string
-  phone?: string
-  email?: string
-}
-
-export default function CreateInvoicePage() {
-  const router = useRouter()
-  const { user } = useAuth()
-  const [showPreview, setShowPreview] = useState(false)
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-  const [isBrowser, setIsBrowser] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [invoicePrefix, setInvoicePrefix] = useState("INV-")
-  const [invoiceNextNumber, setInvoiceNextNumber] = useState(1)
-  const [firmDetails, setFirmDetails] = useState({
-    firmName: "Sethiya Gold",
-    firmAddress: "123 Jewelry Lane, Mumbai, Maharashtra, 400001",
-    firmPhone: "+91 98765 43210",
-    firmGstin: "27AABCT3518Q1ZV"
-  })
-  
-  const invoiceRef = useRef<HTMLDivElement>(null)
-  
-  const [formData, setFormData] = useState({
-    selectedCustomerId: "",
-    selectedCustomerDetails: null as Customer | null,
-    date: new Date().toISOString().split("T")[0],
-    items: [
-      {
-        id: uuidv4(),
-        name: "",
-        quantity: 1,
-        weight: 0,
-        pricePerGram: 6450,
-        total: 0,
-      },
-    ] as InvoiceItem[],
-    gst: 3,
-  })
-
-  // Set isBrowser to true once component mounts and fetch customers and firm details
-  useEffect(() => {
-    setIsBrowser(true)
-    if (user) {
-      fetchCustomers()
-      fetchFirmDetails()
-    } else {
-      setIsLoading(false)
-    }
-  }, [user])
-
-  // Fetch customers from Supabase
-  const fetchCustomers = async () => {
-    if (!user) return
-    
-    try {
-      setIsLoading(true)
-      const { data, error } = await supabase
-        .from('customers')
-        .select('id, name, address, phone, email')
-        .eq('user_id', user.id)
-        .order('name')
-      
-      if (error) throw error
-      
-      setCustomers(data || [])
-    } catch (error: any) {
-      toast({
-        title: "Error loading customers",
-        description: error.message || "Could not load customers",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Fetch firm details from user settings
-  const fetchFirmDetails = async () => {
-    if (!user) return
-    
-    try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('firm_name, firm_address, firm_phone, firm_gstin, firm_email, invoice_default_prefix, invoice_next_number')
-        .eq('user_id', user.id)
-        .single()
-      
-      if (error) {
-        console.error("Error fetching firm details:", error)
-        return // Use default values set in state
-      }
-      
-      if (data) {
-        setFirmDetails({
-          firmName: data.firm_name || "Sethiya Gold",
-          firmAddress: data.firm_address || "123 Jewelry Lane, Mumbai, Maharashtra, 400001",
-          firmPhone: data.firm_phone || "+91 98765 43210",
-          firmGstin: data.firm_gstin || "27AABCT3518Q1ZV"
-        })
-        
-        // Set invoice prefix and next number
-        if (data.invoice_default_prefix) {
-          setInvoicePrefix(data.invoice_default_prefix)
-        }
-        
-        if (data.invoice_next_number) {
-          setInvoiceNextNumber(data.invoice_next_number)
-        }
-      }
-    } catch (error: any) {
-      console.error("Error fetching firm details:", error)
-    }
-  }
-
-  // Handle customer selection
-  const handleCustomerChange = (customerId: string) => {
-    if (customerId === "add_new_customer") {
-      // This is handled by the AddCustomerModal component
-      return
-    }
-    
-    const selectedCustomer = customers.find((c) => c.id === customerId) || null
-    
-    setFormData((prev) => ({
-      ...prev,
-      selectedCustomerId: customerId,
-      selectedCustomerDetails: selectedCustomer,
-    }))
-  }
-
-  // Handle new customer added via modal
-  const handleCustomerAdded = (newCustomer: any) => {
-    const customerObj = {
-      id: newCustomer.id,
-      name: newCustomer.name,
-      address: newCustomer.address,
-      phone: newCustomer.phone,
-      email: newCustomer.email,
-    }
-    
-    // Add to customers list
-    setCustomers((prev) => [...prev, customerObj])
-    
-    // Select the new customer
-    setFormData((prev) => ({
-      ...prev,
-      selectedCustomerId: newCustomer.id,
-      selectedCustomerDetails: customerObj,
-    }))
-  }
-
-  // Handle input changes for non-item fields
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "date" ? value : Number(value),
-    }))
-  }
-  
-  // Handle item field changes
-  const handleItemChange = (itemId: string, field: string, value: string | number) => {
-    setFormData((prev) => {
-      const newItems = prev.items.map((item) => {
-        if (item.id === itemId) {
-          const updatedItem = {
-            ...item,
-            [field]: field === "name" ? value : Number(value),
-          }
-          
-          // Recalculate total for this item
-          updatedItem.total = calculateItemBaseTotal(
-            updatedItem.quantity,
-            updatedItem.weight,
-            updatedItem.pricePerGram
-          )
-          
-          return updatedItem
-        }
-        return item
-      })
-      
-      return { ...prev, items: newItems }
-    })
-  }
-  
-  // Add a new item to the list
-  const addItem = () => {
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          id: uuidv4(),
-          name: "",
-          quantity: 1,
-          weight: 0,
-          pricePerGram: prev.items[0]?.pricePerGram || 6450, // Use the price from the first item or default
-          total: 0,
-        },
-      ],
-    }))
-  }
-  
-  // Remove an item from the list
-  const removeItem = (itemId: string) => {
-    // Don't remove if it's the last item
-    if (formData.items.length <= 1) {
-      return
-    }
-    
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.filter((item) => item.id !== itemId),
-    }))
-  }
-
-  // Calculate base total for a single item (without making charges)
-  const calculateItemBaseTotal = (quantity: number, weight: number, pricePerGram: number) => {
-    return (quantity * weight * pricePerGram) / 10 // Price per 10 grams
-  }
-
-  // Calculate overall totals
-  const calculateTotal = () => {
-    const { items, gst } = formData
-    
-    // Calculate base value (gold value) for all items
-    const itemsBaseTotal = items.reduce((sum, item) => 
-      sum + calculateItemBaseTotal(item.quantity, item.weight, item.pricePerGram), 0
-    )
-    
-    // Subtotal is the base value of all items
-    const subtotal = itemsBaseTotal
-    
-    // Grand total before GST is the same as subtotal since we no longer have making charges
-    const grandTotalBeforeGst = subtotal
-    
-    // Calculate GST on the grand total
-    const gstAmount = grandTotalBeforeGst * (gst / 100)
-    
-    // Total including GST
-    const total = grandTotalBeforeGst + gstAmount
-    
-    return {
-      itemsBaseTotal: itemsBaseTotal.toFixed(2),
-      subtotal: subtotal.toFixed(2),
-      grandTotalBeforeGst: grandTotalBeforeGst.toFixed(2),
-      gstAmount: gstAmount.toFixed(2),
-      total: total.toFixed(2),
-    }
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Check if any item is invalid
-    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
-      toast({
-        title: "Required fields missing",
-        description: "Please fill in all required item fields with valid values",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    // Validate customer selection
-    if (!formData.selectedCustomerId) {
-      toast({
-        title: "Customer required",
-        description: "Please select a customer for the invoice",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    // If customer ID is "add_new_customer" but we don't have a name, show error
-    if (formData.selectedCustomerId === "add_new_customer" && (!formData.selectedCustomerDetails || !formData.selectedCustomerDetails.name.trim())) {
-      toast({
-        title: "Customer name required",
-        description: "Please enter a name for the new customer",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    // Save invoice to database before showing preview
-    handleSaveInvoice().then(() => {
-      setShowPreview(true)
-    }).catch(error => {
-      toast({
-        title: "Error saving invoice",
-        description: error.message || "Failed to save the invoice to the database",
-        variant: "destructive",
-      })
-    })
-  }
-
-  // Save invoice data to Supabase
-  const saveInvoiceToDB = async () => {
-    if (!user) {
-      throw new Error("User not authenticated")
-    }
-    
-    try {
-      setIsSaving(true)
-      
-      const invoiceData = generateInvoiceData()
-      const calculatedTotals = calculateTotal()
-      const customer = formData.selectedCustomerDetails
-      
-      // Insert the main invoice record
-      const { data: invoiceRecord, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert({
-          user_id: user.id,
-          customer_id: formData.selectedCustomerId !== "add_new_customer" ? formData.selectedCustomerId : null,
-          invoice_number: invoiceData.invoiceNumber,
-          invoice_date: new Date(formData.date).toISOString().split('T')[0],
-          status: 'finalized',
-          customer_name_snapshot: customer?.name || "Customer",
-          customer_address_snapshot: customer?.address || null,
-          customer_phone_snapshot: customer?.phone || null,
-          customer_email_snapshot: customer?.email || null,
-          firm_name_snapshot: firmDetails.firmName,
-          firm_address_snapshot: firmDetails.firmAddress,
-          firm_phone_snapshot: firmDetails.firmPhone,
-          firm_gstin_snapshot: firmDetails.firmGstin,
-          subtotal: Number(calculatedTotals.subtotal),
-          gst_percentage: formData.gst,
-          gst_amount: Number(calculatedTotals.gstAmount),
-          grand_total: Number(calculatedTotals.total)
-        })
-        .select('id')
-        .single()
-      
-      if (invoiceError) {
-        throw new Error(`Error saving invoice: ${invoiceError.message}`)
-      }
-      
-      if (!invoiceRecord) {
-        throw new Error("Failed to create invoice record")
-      }
-      
-      // Now insert all the invoice items
-      const invoiceItems = formData.items.map(item => ({
-        invoice_id: invoiceRecord.id,
-        user_id: user.id,
-        name: item.name,
-        quantity: item.quantity,
-        weight: item.weight,
-        price_per_gram: item.pricePerGram,
-        total: item.total
-      }))
-      
-      const { error: itemsError } = await supabase
-        .from('invoice_items')
-        .insert(invoiceItems)
-      
-      if (itemsError) {
-        throw new Error(`Error saving invoice items: ${itemsError.message}`)
-      }
-      
-      // Update the invoice_next_number in user_settings
-      const { error: updateError } = await supabase
-        .from('user_settings')
-        .update({ invoice_next_number: invoiceNextNumber + 1 })
-        .eq('user_id', user.id)
-      
-      if (updateError) {
-        console.error(`Error updating invoice number: ${updateError.message}`)
-        // Continue anyway, as the invoice is already saved
-      } else {
-        // Update local state for next invoice
-        setInvoiceNextNumber(invoiceNextNumber + 1)
-      }
-      
-      toast({
-        title: "Invoice saved",
-        description: `Invoice ${invoiceData.invoiceNumber} has been successfully saved.`,
-        variant: "default",
-      })
-      
-      return invoiceRecord.id
-    } catch (error: any) {
-      console.error("Error saving invoice:", error)
-      throw error
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date
-      .toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .replace(/\//g, "/")
-  }
-
-  const generateInvoiceData = () => {
-    const calculatedTotals = calculateTotal()
-    const customer = formData.selectedCustomerDetails || { 
-      name: "Customer", 
-      address: undefined,
-      phone: undefined,
-      email: undefined 
-    }
-    
-    return {
-      invoiceNumber:
-        invoicePrefix +
-        invoiceNextNumber.toString()
-          .padStart(4, "0"),
-      date: formatDate(formData.date),
-      customerName: customer.name,
-      customerAddress: customer.address,
-      customerPhone: customer.phone,
-      customerEmail: customer.email,
-      firmName: firmDetails.firmName,
-      firmAddress: firmDetails.firmAddress,
-      firmPhone: firmDetails.firmPhone,
-      firmGstin: firmDetails.firmGstin,
-      items: formData.items.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        weight: item.weight,
-        pricePerGram: item.pricePerGram,
-        total: item.total,
-      })),
-      subtotal: Number(calculatedTotals.subtotal),
-      gstPercentage: formData.gst,
-      gstAmount: Number(calculatedTotals.gstAmount),
-      total: Number(calculatedTotals.total),
-    }
-  }
-
-  // Handle printing
-  const handlePrint = useReactToPrint({
-    // @ts-ignore - TypeScript definition seems incomplete
-    content: () => invoiceRef.current,
-    documentTitle: `Invoice-${generateInvoiceData().invoiceNumber}`,
-  });
-
-  const handleSaveInvoice = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to save an invoice",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    // Validate required fields
-    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
-      toast({
-        title: "Required fields missing",
-        description: "Please fill in all required item fields with valid values",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    try {
-      setIsSaving(true)
-      
-      const id = await saveInvoiceToDB()
-      
-      toast({
-        title: "Invoice saved",
-        description: "The invoice has been successfully saved.",
-        variant: "default",
-      })
-      
-      // Navigate to invoice detail page
-      router.push(`/invoices/${id}`)
-    } catch (error: any) {
-      console.error("Error saving invoice:", error)
-      toast({
-        title: "Error saving invoice",
-        description: error.message || "An error occurred while saving the invoice.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  // Handle previewing the invoice
-  const handlePreview = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Check if any item is invalid
-    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
-      toast({
-        title: "Required fields missing",
-        description: "Please fill in all required item fields with valid values",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    // If customer ID is "add_new_customer" but we don't have a name, show error
-    if (formData.selectedCustomerId === "add_new_customer" && (!formData.selectedCustomerDetails || !formData.selectedCustomerDetails.name.trim())) {
-      toast({
-        title: "Customer name required",
-        description: "Please enter a name for the new customer",
-        variant: "destructive",
-      })
-      return
-    }
-    
-    setShowPreview(true)
-  }
-
-  return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <FileText className="h-6 w-6 text-amber-500" />
-          <span className="text-xl">Sethiya Gold</span>
-        </Link>
-      </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
-          <h1 className="ml-4 text-xl font-semibold md:text-2xl">Create New Invoice</h1>
-        </div>
-
-        {!showPreview ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Invoice Details</CardTitle>
-              <CardDescription>Fill in the details to create a new invoice</CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="customer">Customer</Label>
-                    <Select 
-                      value={formData.selectedCustomerId} 
-                      onValueChange={handleCustomerChange}
-                    >
-                      <SelectTrigger id="customer">
-                        <SelectValue placeholder="Select customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Customers</SelectLabel>
-                          {customers.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              {customer.name}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="add_new_customer">
-                            <span className="text-primary">+ Add New Customer</span>
-                          </SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    {formData.selectedCustomerId === "add_new_customer" && (
-                      <AddCustomerModal onCustomerAdded={handleCustomerAdded} />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input id="date" name="date" type="date" value={formData.date} onChange={handleChange} required />
-                  </div>
-                </div>
-
-                {formData.selectedCustomerDetails && (
-                  <div className="rounded-md border p-3 text-sm">
-                    <p className="font-medium">{formData.selectedCustomerDetails.name}</p>
-                    {formData.selectedCustomerDetails.address && (
-                      <p className="text-muted-foreground">{formData.selectedCustomerDetails.address}</p>
-                    )}
-                    <p className="text-muted-foreground">
-                      {formData.selectedCustomerDetails.phone && `Phone: ${formData.selectedCustomerDetails.phone}`}
-                      {formData.selectedCustomerDetails.phone && formData.selectedCustomerDetails.email && " | "}
-                      {formData.selectedCustomerDetails.email && `Email: ${formData.selectedCustomerDetails.email}`}
-                    </p>
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Jewelry Items</h3>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={addItem}
-                      className="gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Item
-                    </Button>
-                  </div>
-
-                  {formData.items.map((item, index) => (
-                    <div key={item.id} className="rounded-md border p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">Item {index + 1}</h4>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeItem(item.id)}
-                          disabled={formData.items.length <= 1}
-                          className="h-8 w-8 rounded-full p-0"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                          <span className="sr-only">Remove</span>
-                        </Button>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor={`item-name-${item.id}`}>Jewelry Item Name</Label>
-                          <Input
-                            id={`item-name-${item.id}`}
-                            value={item.name}
-                            onChange={(e) => handleItemChange(item.id, "name", e.target.value)}
-                            placeholder="Enter jewelry item name"
-                            required
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-quantity-${item.id}`}>Quantity</Label>
-                            <Input
-                              id={`item-quantity-${item.id}`}
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => handleItemChange(item.id, "quantity", e.target.value)}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-weight-${item.id}`}>Weight (in grams)</Label>
-                            <Input
-                              id={`item-weight-${item.id}`}
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="Enter weight in grams"
-                              value={item.weight || ""}
-                              onChange={(e) => handleItemChange(item.id, "weight", e.target.value)}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-price-${item.id}`}>Price per 10 grams (₹)</Label>
-                            <Input
-                              id={`item-price-${item.id}`}
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="Enter price per 10 grams"
-                              value={item.pricePerGram}
-                              onChange={(e) => handleItemChange(item.id, "pricePerGram", e.target.value)}
-                              required
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                          <div className="space-y-2 flex flex-col justify-end">
-                            <div className="text-right">
-                              <div className="text-sm text-muted-foreground">Base Value: ₹{calculateItemBaseTotal(item.quantity, item.weight, item.pricePerGram).toFixed(2)}</div>
-                              <div className="font-medium">Item Total: ₹{item.total.toFixed(2)}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="gst">GST (%)</Label>
-                  <Input
-                    id="gst"
-                    name="gst"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.gst}
-                    onChange={handleChange}
-                    disabled
-                  />
-                  <p className="text-sm text-muted-foreground">GST for jewelry is fixed at 3%</p>
-                </div>
-
-                <div className="rounded-lg bg-muted p-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span>Items Base Total:</span>
-                      <span>₹{calculateTotal().itemsBaseTotal}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Subtotal (Before GST):</span>
-                      <span>₹{calculateTotal().grandTotalBeforeGst}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>GST ({formData.gst}%):</span>
-                      <span>₹{calculateTotal().gstAmount}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold">
-                      <span>Total Amount:</span>
-                      <span>₹{calculateTotal().total}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Button variant="outline" type="button" onClick={() => router.push("/dashboard")} disabled={isSaving}>
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-amber-600 hover:bg-amber-700" disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <svg className="mr-2 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Saving Invoice...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="mr-2 h-4 w-4" />
-                      Generate Invoice
-                    </>
-                  )}
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex justify-between">
-              <Button variant="outline" onClick={() => setShowPreview(false)}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Edit Invoice
-              </Button>
-              <div className="flex gap-2">
-                {isBrowser && (
-                  <>
-                    <Button variant="outline" onClick={handlePrint}>
-                      <Printer className="mr-2 h-4 w-4" />
-                      Print Invoice
-                    </Button>
-                  </>
-                )}
-                <PDFDownloadLinkWrapper
-                  invoiceData={generateInvoiceData()}
-                  onStartGeneration={() => setIsGeneratingPDF(true)}
-                  onFinishGeneration={() => setIsGeneratingPDF(false)}
-                />
-              </div>
-            </div>
-
-            <div ref={invoiceRef}>
-              <InvoicePreview invoiceData={generateInvoiceData()} />
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  )
-}
-</file>
-
 <file path="app/settings/page.tsx">
 "use client"
 
@@ -19976,6 +19751,849 @@ export default function SettingsPage() {
 }
 </file>
 
+<file path="app/create-invoice/page.tsx">
+"use client"
+
+import type React from "react"
+import { v4 as uuidv4 } from "uuid"
+
+import { useState, useRef, useEffect } from "react"
+import Link from "next/link"
+import { ArrowLeft, FileText, Printer, Save, Plus, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useReactToPrint } from "react-to-print"
+import dynamic from "next/dynamic"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { InvoicePreview } from "@/app/create-invoice/invoice-preview"
+import { toast } from "@/components/ui/use-toast"
+import { useAuth } from "@/components/auth-provider"
+import supabase from "@/lib/supabase"
+import { AddCustomerModal } from "@/app/create-invoice/components/add-customer-modal"
+
+// Dynamically import PDF components with ssr: false to ensure they only load on the client
+const PDFDownloadLinkWrapper = dynamic(
+  () => import("@/app/create-invoice/pdf-download-link-wrapper").then((mod) => mod.PDFDownloadLinkWrapper),
+  { ssr: false },
+)
+
+// Item interface for form state
+interface InvoiceItem {
+  id: string
+  name: string
+  quantity: number
+  weight: number
+  pricePerGram: number
+  total: number
+}
+
+// Customer interface
+interface Customer {
+  id: string
+  name: string
+  address?: string
+  phone?: string
+  email?: string
+}
+
+export default function CreateInvoicePage() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const [showPreview, setShowPreview] = useState(false)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [isBrowser, setIsBrowser] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [invoicePrefix, setInvoicePrefix] = useState("INV-")
+  const [invoiceNextNumber, setInvoiceNextNumber] = useState(1)
+  const [firmDetails, setFirmDetails] = useState({
+    firmName: "Sethiya Gold",
+    firmAddress: "123 Jewelry Lane, Mumbai, Maharashtra, 400001",
+    firmPhone: "+91 98765 43210",
+    firmGstin: "27AABCT3518Q1ZV"
+  })
+  
+  const invoiceRef = useRef<HTMLDivElement>(null)
+  
+  const [formData, setFormData] = useState({
+    selectedCustomerId: "",
+    selectedCustomerDetails: null as Customer | null,
+    date: new Date().toISOString().split("T")[0],
+    items: [
+      {
+        id: uuidv4(),
+        name: "",
+        quantity: 1,
+        weight: 0,
+        pricePerGram: 6450,
+        total: 0,
+      },
+    ] as InvoiceItem[],
+    gst: 3,
+  })
+
+  // Set isBrowser to true once component mounts and fetch customers and firm details
+  useEffect(() => {
+    setIsBrowser(true)
+    if (user) {
+      fetchCustomers()
+      fetchFirmDetails()
+    } else {
+      setIsLoading(false)
+    }
+  }, [user])
+
+  // Fetch customers from Supabase
+  const fetchCustomers = async () => {
+    if (!user) return
+    
+    try {
+      setIsLoading(true)
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, name, address, phone, email')
+        .eq('user_id', user.id)
+        .order('name')
+      
+      if (error) throw error
+      
+      setCustomers(data || [])
+    } catch (error: any) {
+      toast({
+        title: "Error loading customers",
+        description: error.message || "Could not load customers",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fetch firm details from user settings
+  const fetchFirmDetails = async () => {
+    if (!user) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('firm_name, firm_address, firm_phone, firm_gstin, firm_email, invoice_default_prefix, invoice_next_number')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (error) {
+        console.error("Error fetching firm details:", error)
+        return // Use default values set in state
+      }
+      
+      if (data) {
+        setFirmDetails({
+          firmName: data.firm_name || "Sethiya Gold",
+          firmAddress: data.firm_address || "123 Jewelry Lane, Mumbai, Maharashtra, 400001",
+          firmPhone: data.firm_phone || "+91 98765 43210",
+          firmGstin: data.firm_gstin || "27AABCT3518Q1ZV"
+        })
+        
+        // Set invoice prefix and next number
+        if (data.invoice_default_prefix) {
+          setInvoicePrefix(data.invoice_default_prefix)
+        }
+        
+        if (data.invoice_next_number) {
+          setInvoiceNextNumber(data.invoice_next_number)
+        }
+      }
+    } catch (error: any) {
+      console.error("Error fetching firm details:", error)
+    }
+  }
+
+  // Handle customer selection
+  const handleCustomerChange = (customerId: string) => {
+    if (customerId === "add_new_customer") {
+      // This is handled by the AddCustomerModal component
+      return
+    }
+    
+    const selectedCustomer = customers.find((c) => c.id === customerId) || null
+    
+    setFormData((prev) => ({
+      ...prev,
+      selectedCustomerId: customerId,
+      selectedCustomerDetails: selectedCustomer,
+    }))
+  }
+
+  // Handle new customer added via modal
+  const handleCustomerAdded = (newCustomer: any) => {
+    const customerObj = {
+      id: newCustomer.id,
+      name: newCustomer.name,
+      address: newCustomer.address,
+      phone: newCustomer.phone,
+      email: newCustomer.email,
+    }
+    
+    // Add to customers list
+    setCustomers((prev) => [...prev, customerObj])
+    
+    // Select the new customer
+    setFormData((prev) => ({
+      ...prev,
+      selectedCustomerId: newCustomer.id,
+      selectedCustomerDetails: customerObj,
+    }))
+  }
+
+  // Handle input changes for non-item fields
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "date" ? value : Number(value),
+    }))
+  }
+  
+  // Handle item field changes
+  const handleItemChange = (itemId: string, field: string, value: string | number) => {
+    setFormData((prev) => {
+      const newItems = prev.items.map((item) => {
+        if (item.id === itemId) {
+          const updatedItem = {
+            ...item,
+            [field]: field === "name" ? value : Number(value),
+          }
+          
+          // Recalculate total for this item
+          updatedItem.total = calculateItemBaseTotal(
+            updatedItem.quantity,
+            updatedItem.weight,
+            updatedItem.pricePerGram
+          )
+          
+          return updatedItem
+        }
+        return item
+      })
+      
+      return { ...prev, items: newItems }
+    })
+  }
+  
+  // Add a new item to the list
+  const addItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        {
+          id: uuidv4(),
+          name: "",
+          quantity: 1,
+          weight: 0,
+          pricePerGram: prev.items[0]?.pricePerGram || 6450, // Use the price from the first item or default
+          total: 0,
+        },
+      ],
+    }))
+  }
+  
+  // Remove an item from the list
+  const removeItem = (itemId: string) => {
+    // Don't remove if it's the last item
+    if (formData.items.length <= 1) {
+      return
+    }
+    
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.filter((item) => item.id !== itemId),
+    }))
+  }
+
+  // Calculate base total for a single item (without making charges)
+  const calculateItemBaseTotal = (quantity: number, weight: number, pricePerGram: number) => {
+    return (quantity * weight * pricePerGram) / 10 // Price per 10 grams
+  }
+
+  // Calculate overall totals
+  const calculateTotal = () => {
+    const { items, gst } = formData
+    
+    // Calculate base value (gold value) for all items
+    const itemsBaseTotal = items.reduce((sum, item) => 
+      sum + calculateItemBaseTotal(item.quantity, item.weight, item.pricePerGram), 0
+    )
+    
+    // Subtotal is the base value of all items
+    const subtotal = itemsBaseTotal
+    
+    // Grand total before GST is the same as subtotal since we no longer have making charges
+    const grandTotalBeforeGst = subtotal
+    
+    // Calculate GST on the grand total
+    const gstAmount = grandTotalBeforeGst * (gst / 100)
+    
+    // Total including GST
+    const total = grandTotalBeforeGst + gstAmount
+    
+    return {
+      itemsBaseTotal: itemsBaseTotal.toFixed(2),
+      subtotal: subtotal.toFixed(2),
+      grandTotalBeforeGst: grandTotalBeforeGst.toFixed(2),
+      gstAmount: gstAmount.toFixed(2),
+      total: total.toFixed(2),
+    }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Check if any item is invalid
+    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in all required item fields with valid values",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    // Validate customer selection
+    if (!formData.selectedCustomerId) {
+      toast({
+        title: "Customer required",
+        description: "Please select a customer for the invoice",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    // If customer ID is "add_new_customer" but we don't have a name, show error
+    if (formData.selectedCustomerId === "add_new_customer" && (!formData.selectedCustomerDetails || !formData.selectedCustomerDetails.name.trim())) {
+      toast({
+        title: "Customer name required",
+        description: "Please enter a name for the new customer",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    // Save invoice to database before showing preview
+    handleSaveInvoice().then(() => {
+      setShowPreview(true)
+    }).catch(error => {
+      toast({
+        title: "Error saving invoice",
+        description: error.message || "Failed to save the invoice to the database",
+        variant: "destructive",
+      })
+    })
+  }
+
+  // Save invoice data to Supabase
+  const saveInvoiceToDB = async () => {
+    if (!user) {
+      throw new Error("User not authenticated")
+    }
+    
+    try {
+      setIsSaving(true)
+      
+      const invoiceData = generateInvoiceData()
+      const calculatedTotals = calculateTotal()
+      const customer = formData.selectedCustomerDetails
+      
+      // Insert the main invoice record
+      const { data: invoiceRecord, error: invoiceError } = await supabase
+        .from('invoices')
+        .insert({
+          user_id: user.id,
+          customer_id: formData.selectedCustomerId !== "add_new_customer" ? formData.selectedCustomerId : null,
+          invoice_number: invoiceData.invoiceNumber,
+          invoice_date: new Date(formData.date).toISOString().split('T')[0],
+          status: 'finalized',
+          customer_name_snapshot: customer?.name || "Customer",
+          customer_address_snapshot: customer?.address || null,
+          customer_phone_snapshot: customer?.phone || null,
+          customer_email_snapshot: customer?.email || null,
+          firm_name_snapshot: firmDetails.firmName,
+          firm_address_snapshot: firmDetails.firmAddress,
+          firm_phone_snapshot: firmDetails.firmPhone,
+          firm_gstin_snapshot: firmDetails.firmGstin,
+          subtotal: Number(calculatedTotals.subtotal),
+          gst_percentage: formData.gst,
+          gst_amount: Number(calculatedTotals.gstAmount),
+          grand_total: Number(calculatedTotals.total)
+        })
+        .select('id')
+        .single()
+      
+      if (invoiceError) {
+        throw new Error(`Error saving invoice: ${invoiceError.message}`)
+      }
+      
+      if (!invoiceRecord) {
+        throw new Error("Failed to create invoice record")
+      }
+      
+      // Now insert all the invoice items
+      const invoiceItems = formData.items.map(item => ({
+        invoice_id: invoiceRecord.id,
+        user_id: user.id,
+        name: item.name,
+        quantity: item.quantity,
+        weight: item.weight,
+        price_per_gram: item.pricePerGram,
+        total: item.total
+      }))
+      
+      const { error: itemsError } = await supabase
+        .from('invoice_items')
+        .insert(invoiceItems)
+      
+      if (itemsError) {
+        throw new Error(`Error saving invoice items: ${itemsError.message}`)
+      }
+      
+      // Update the invoice_next_number in user_settings
+      const { error: updateError } = await supabase
+        .from('user_settings')
+        .update({ invoice_next_number: invoiceNextNumber + 1 })
+        .eq('user_id', user.id)
+      
+      if (updateError) {
+        console.error(`Error updating invoice number: ${updateError.message}`)
+        // Continue anyway, as the invoice is already saved
+      } else {
+        // Update local state for next invoice
+        setInvoiceNextNumber(invoiceNextNumber + 1)
+      }
+      
+      toast({
+        title: "Invoice saved",
+        description: `Invoice ${invoiceData.invoiceNumber} has been successfully saved.`,
+        variant: "default",
+      })
+      
+      return invoiceRecord.id
+    } catch (error: any) {
+      console.error("Error saving invoice:", error)
+      throw error
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date
+      .toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, "/")
+  }
+
+  const generateInvoiceData = () => {
+    const calculatedTotals = calculateTotal()
+    const customer = formData.selectedCustomerDetails || { 
+      name: "Customer", 
+      address: undefined,
+      phone: undefined,
+      email: undefined 
+    }
+    
+    return {
+      invoiceNumber:
+        invoicePrefix +
+        invoiceNextNumber.toString()
+          .padStart(4, "0"),
+      date: formatDate(formData.date),
+      customerName: customer.name,
+      customerAddress: customer.address,
+      customerPhone: customer.phone,
+      customerEmail: customer.email,
+      firmName: firmDetails.firmName,
+      firmAddress: firmDetails.firmAddress,
+      firmPhone: firmDetails.firmPhone,
+      firmGstin: firmDetails.firmGstin,
+      items: formData.items.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        weight: item.weight,
+        pricePerGram: item.pricePerGram,
+        total: item.total,
+      })),
+      subtotal: Number(calculatedTotals.subtotal),
+      gstPercentage: formData.gst,
+      gstAmount: Number(calculatedTotals.gstAmount),
+      total: Number(calculatedTotals.total),
+    }
+  }
+
+  // Handle printing
+  const handlePrint = useReactToPrint({
+    // @ts-ignore - TypeScript definition seems incomplete
+    content: () => invoiceRef.current,
+    documentTitle: `Invoice-${generateInvoiceData().invoiceNumber}`,
+  });
+
+  const handleSaveInvoice = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to save an invoice",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    // Validate required fields
+    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in all required item fields with valid values",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    try {
+      setIsSaving(true)
+      
+      const id = await saveInvoiceToDB()
+      
+      toast({
+        title: "Invoice saved",
+        description: "The invoice has been successfully saved.",
+        variant: "default",
+      })
+      
+      // Navigate to invoice detail page
+      router.push(`/invoices/${id}`)
+    } catch (error: any) {
+      console.error("Error saving invoice:", error)
+      toast({
+        title: "Error saving invoice",
+        description: error.message || "An error occurred while saving the invoice.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Handle previewing the invoice
+  const handlePreview = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Check if any item is invalid
+    if (formData.items.some(item => !item.name.trim() || item.quantity <= 0 || item.weight <= 0)) {
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in all required item fields with valid values",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    // If customer ID is "add_new_customer" but we don't have a name, show error
+    if (formData.selectedCustomerId === "add_new_customer" && (!formData.selectedCustomerDetails || !formData.selectedCustomerDetails.name.trim())) {
+      toast({
+        title: "Customer name required",
+        description: "Please enter a name for the new customer",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    setShowPreview(true)
+  }
+
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <FileText className="h-6 w-6 text-amber-500" />
+          <span className="text-xl">Sethiya Gold</span>
+        </Link>
+      </header>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm" className="gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <h1 className="ml-4 text-xl font-semibold md:text-2xl">Create New Invoice</h1>
+        </div>
+
+        {!showPreview ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Invoice Details</CardTitle>
+              <CardDescription>Fill in the details to create a new invoice</CardDescription>
+            </CardHeader>
+            <form onSubmit={handleSubmit}>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="customer">Customer</Label>
+                    <Select 
+                      value={formData.selectedCustomerId} 
+                      onValueChange={handleCustomerChange}
+                    >
+                      <SelectTrigger id="customer">
+                        <SelectValue placeholder="Select customer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Customers</SelectLabel>
+                          {customers.map((customer) => (
+                            <SelectItem key={customer.id} value={customer.id}>
+                              {customer.name}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="add_new_customer">
+                            <span className="text-primary">+ Add New Customer</span>
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {formData.selectedCustomerId === "add_new_customer" && (
+                      <AddCustomerModal onCustomerAdded={handleCustomerAdded} />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input id="date" name="date" type="date" value={formData.date} onChange={handleChange} required />
+                  </div>
+                </div>
+
+                {formData.selectedCustomerDetails && (
+                  <div className="rounded-md border p-3 text-sm">
+                    <p className="font-medium">{formData.selectedCustomerDetails.name}</p>
+                    {formData.selectedCustomerDetails.address && (
+                      <p className="text-muted-foreground">{formData.selectedCustomerDetails.address}</p>
+                    )}
+                    <p className="text-muted-foreground">
+                      {formData.selectedCustomerDetails.phone && `Phone: ${formData.selectedCustomerDetails.phone}`}
+                      {formData.selectedCustomerDetails.phone && formData.selectedCustomerDetails.email && " | "}
+                      {formData.selectedCustomerDetails.email && `Email: ${formData.selectedCustomerDetails.email}`}
+                    </p>
+                  </div>
+                )}
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Jewelry Items</h3>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={addItem}
+                      className="gap-1"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Item
+                    </Button>
+                  </div>
+
+                  {formData.items.map((item, index) => (
+                    <div key={item.id} className="rounded-md border p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">Item {index + 1}</h4>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeItem(item.id)}
+                          disabled={formData.items.length <= 1}
+                          className="h-8 w-8 rounded-full p-0"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <span className="sr-only">Remove</span>
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor={`item-name-${item.id}`}>Jewelry Item Name</Label>
+                          <Input
+                            id={`item-name-${item.id}`}
+                            value={item.name}
+                            onChange={(e) => handleItemChange(item.id, "name", e.target.value)}
+                            placeholder="Enter jewelry item name"
+                            required
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`item-quantity-${item.id}`}>Quantity</Label>
+                            <Input
+                              id={`item-quantity-${item.id}`}
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => handleItemChange(item.id, "quantity", e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`item-weight-${item.id}`}>Weight (in grams)</Label>
+                            <Input
+                              id={`item-weight-${item.id}`}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Enter weight in grams"
+                              value={item.weight || ""}
+                              onChange={(e) => handleItemChange(item.id, "weight", e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`item-price-${item.id}`}>Price per 10 grams (₹)</Label>
+                            <Input
+                              id={`item-price-${item.id}`}
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Enter price per 10 grams"
+                              value={item.pricePerGram}
+                              onChange={(e) => handleItemChange(item.id, "pricePerGram", e.target.value)}
+                              required
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div className="space-y-2 flex flex-col justify-end">
+                            <div className="text-right">
+                              <div className="text-sm text-muted-foreground">Base Value: ₹{calculateItemBaseTotal(item.quantity, item.weight, item.pricePerGram).toFixed(2)}</div>
+                              <div className="font-medium">Item Total: ₹{item.total.toFixed(2)}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gst">GST (%)</Label>
+                  <Input
+                    id="gst"
+                    name="gst"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.gst}
+                    onChange={handleChange}
+                    disabled
+                  />
+                  <p className="text-sm text-muted-foreground">GST for jewelry is fixed at 3%</p>
+                </div>
+
+                <div className="rounded-lg bg-muted p-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Items Base Total:</span>
+                      <span>₹{calculateTotal().itemsBaseTotal}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Subtotal (Before GST):</span>
+                      <span>₹{calculateTotal().grandTotalBeforeGst}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>GST ({formData.gst}%):</span>
+                      <span>₹{calculateTotal().gstAmount}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-bold">
+                      <span>Total Amount:</span>
+                      <span>₹{calculateTotal().total}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button variant="outline" type="button" onClick={() => router.push("/dashboard")} disabled={isSaving}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-amber-600 hover:bg-amber-700" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <svg className="mr-2 h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving Invoice...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Generate Invoice
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={() => setShowPreview(false)}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Edit Invoice
+              </Button>
+              <div className="flex gap-2">
+                {isBrowser && (
+                  <>
+                    <Button variant="outline" onClick={handlePrint}>
+                      <Printer className="mr-2 h-4 w-4" />
+                      Print Invoice
+                    </Button>
+                  </>
+                )}
+                <PDFDownloadLinkWrapper
+                  invoiceData={generateInvoiceData()}
+                  onStartGeneration={() => setIsGeneratingPDF(true)}
+                  onFinishGeneration={() => setIsGeneratingPDF(false)}
+                />
+              </div>
+            </div>
+
+            <div ref={invoiceRef}>
+              <InvoicePreview invoiceData={generateInvoiceData()} />
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+</file>
+
 <file path="app/create-invoice/invoice-preview.tsx">
 "use client"
 
@@ -20150,6 +20768,311 @@ export const InvoicePreview = React.forwardRef<HTMLDivElement, InvoicePreviewPro
 });
 
 InvoicePreview.displayName = "InvoicePreview";
+</file>
+
+<file path="app/dashboard/page.tsx">
+"use client"
+
+import type { Metadata } from "next"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import {
+  Box,
+  FileText,
+  Home,
+  Package,
+  Plus,
+  Users,
+  User,
+  LogOut,
+  Lock,
+  ChevronDown,
+  BarChart4,
+  ShoppingBag,
+  Receipt,
+  Calendar,
+  Settings,
+  ShoppingCart,
+} from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/components/auth-provider"
+import { useToast } from "@/components/ui/use-toast"
+import supabase from "@/lib/supabase"
+
+// Remove the metadata export since this is now a client component
+// export const metadata: Metadata = {
+//   title: "Dashboard - Sethiya Gold",
+//   description: "A premium invoicing system for Indian jewelry shops",
+// }
+
+export default function DashboardPage() {
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push("/")
+      toast({
+        title: "Authentication required",
+        description: "Please log in to access the dashboard",
+        variant: "destructive",
+      })
+    }
+  }, [user, isLoading, router, toast])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out",
+    })
+  }
+
+  // Show loading state or nothing while checking authentication
+  if (isLoading || !user) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
+  }
+
+  return (
+    <div className="flex min-h-screen w-full flex-col">
+      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+          <FileText className="h-6 w-6 text-primary" />
+          <span className="text-xl">Sethiya Gold</span>
+        </Link>
+        <nav className="ml-auto flex items-center gap-4">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm">
+              <Home className="mr-2 h-4 w-4" />
+              Home
+            </Button>
+          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                <User className="h-4 w-4" />
+                <span>{user.user_metadata?.full_name || user.email}</span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/profile">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>View Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Lock className="mr-2 h-4 w-4" />
+                <span>Change Password</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </nav>
+      </header>
+      <main className="flex flex-1 flex-col gap-6 p-6 md:gap-8 md:p-8">
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome to Sethiya Gold</h1>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Sales Card */}
+          <Card className="col-span-1 overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md md:col-span-2 lg:col-span-3">
+            <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 pb-2">
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5 text-primary" />
+                Sales
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                {/* Create Invoice */}
+                <Link href="/create-invoice" className="group">
+                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Receipt className="h-4 w-4 text-primary" />
+                        Create Invoice
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                        <Plus className="h-8 w-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                {/* View Invoices */}
+                <Link href="/invoices" className="group">
+                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <FileText className="h-4 w-4 text-primary" />
+                        View Invoices
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                        <FileText className="h-8 w-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                {/* Create Booking */}
+                <Link href="/bookings/create" className="group">
+                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Calendar className="h-4 w-4 text-primary" />
+                        Create Booking
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-2">
+                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                        <Calendar className="h-8 w-8" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Stock Tile */}
+          <Link href="/stock" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  Stock
+                </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                    <Box className="h-12 w-12" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+          {/* Purchases Tile */}
+          <Link href="/purchases" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5 text-primary" />
+                  Purchases
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <ShoppingCart className="h-12 w-12" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Customer Tile */}
+          <Link href="/customers" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Customer
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <Users className="h-12 w-12" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Reports Tile */}
+          <Link href="/reports" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart4 className="h-5 w-5 text-primary" />
+                  Reports
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <BarChart4 className="h-12 w-12" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Settings Tile */}
+          <Link href="/settings" className="group">
+            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
+              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-primary" />
+                  Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
+                  <Settings className="h-12 w-12" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+        </div>
+
+        <div className="mt-4 rounded-lg border border-border bg-secondary p-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full bg-secondary/80 p-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                className="h-4 w-4 text-primary"
+              >
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="font-medium">Current Gold Rate</h3>
+              <p className="text-sm text-muted-foreground">₹6,450 per 10 grams (22K) | Updated: Today</p>
+            </div>
+            <Button variant="outline" size="sm" className="ml-auto">
+              Update Rate
+            </Button>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
 </file>
 
 <file path="lib/database.types.ts">
@@ -21183,311 +22106,6 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
       </Page>
     </Document>
   );
-}
-</file>
-
-<file path="app/dashboard/page.tsx">
-"use client"
-
-import type { Metadata } from "next"
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import {
-  Box,
-  FileText,
-  Home,
-  Package,
-  Plus,
-  Users,
-  User,
-  LogOut,
-  Lock,
-  ChevronDown,
-  BarChart4,
-  ShoppingBag,
-  Receipt,
-  Calendar,
-  Settings,
-  ShoppingCart,
-} from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useAuth } from "@/components/auth-provider"
-import { useToast } from "@/components/ui/use-toast"
-import supabase from "@/lib/supabase"
-
-// Remove the metadata export since this is now a client component
-// export const metadata: Metadata = {
-//   title: "Dashboard - Sethiya Gold",
-//   description: "A premium invoicing system for Indian jewelry shops",
-// }
-
-export default function DashboardPage() {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
-  const { toast } = useToast()
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push("/")
-      toast({
-        title: "Authentication required",
-        description: "Please log in to access the dashboard",
-        variant: "destructive",
-      })
-    }
-  }, [user, isLoading, router, toast])
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/")
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    })
-  }
-
-  // Show loading state or nothing while checking authentication
-  if (isLoading || !user) {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
-  }
-
-  return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <FileText className="h-6 w-6 text-primary" />
-          <span className="text-xl">Sethiya Gold</span>
-        </Link>
-        <nav className="ml-auto flex items-center gap-4">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm">
-              <Home className="mr-2 h-4 w-4" />
-              Home
-            </Button>
-          </Link>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex items-center gap-1">
-                <User className="h-4 w-4" />
-                <span>{user.user_metadata?.full_name || user.email}</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/profile">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>View Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Lock className="mr-2 h-4 w-4" />
-                <span>Change Password</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Logout</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </nav>
-      </header>
-      <main className="flex flex-1 flex-col gap-6 p-6 md:gap-8 md:p-8">
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Welcome to Sethiya Gold</h1>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Sales Card */}
-          <Card className="col-span-1 overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md md:col-span-2 lg:col-span-3">
-            <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 pb-2">
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5 text-primary" />
-                Sales
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                {/* Create Invoice */}
-                <Link href="/create-invoice" className="group">
-                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Receipt className="h-4 w-4 text-primary" />
-                        Create Invoice
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-2">
-                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                        <Plus className="h-8 w-8" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-
-                {/* View Invoices */}
-                <Link href="/invoices" className="group">
-                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <FileText className="h-4 w-4 text-primary" />
-                        View Invoices
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-2">
-                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                        <FileText className="h-8 w-8" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-
-                {/* Create Booking */}
-                <Link href="/bookings/create" className="group">
-                  <Card className="h-full overflow-hidden border transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        Create Booking
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-2">
-                      <div className="flex h-20 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                        <Calendar className="h-8 w-8" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Stock Tile */}
-          <Link href="/stock" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-primary" />
-                  Stock
-                </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                    <Box className="h-12 w-12" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-          {/* Purchases Tile */}
-          <Link href="/purchases" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5 text-primary" />
-                  Purchases
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                  <ShoppingCart className="h-12 w-12" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Customer Tile */}
-          <Link href="/customers" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Customer
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                  <Users className="h-12 w-12" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Reports Tile */}
-          <Link href="/reports" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart4 className="h-5 w-5 text-primary" />
-                  Reports
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                  <BarChart4 className="h-12 w-12" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Settings Tile */}
-          <Link href="/settings" className="group">
-            <Card className="h-full overflow-hidden border-2 transition-all duration-200 hover:border-primary/30 hover:shadow-md">
-              <CardHeader className="bg-gradient-to-r from-secondary to-secondary/70 pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-primary" />
-                  Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex h-24 items-center justify-center rounded-md bg-secondary p-4 text-primary transition-colors group-hover:bg-secondary/70">
-                  <Settings className="h-12 w-12" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-        </div>
-
-        <div className="mt-4 rounded-lg border border-border bg-secondary p-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-secondary/80 p-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                className="h-4 w-4 text-primary"
-              >
-                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="font-medium">Current Gold Rate</h3>
-              <p className="text-sm text-muted-foreground">₹6,450 per 10 grams (22K) | Updated: Today</p>
-            </div>
-            <Button variant="outline" size="sm" className="ml-auto">
-              Update Rate
-            </Button>
-          </div>
-        </div>
-      </main>
-    </div>
-  )
 }
 </file>
 

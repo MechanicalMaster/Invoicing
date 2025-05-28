@@ -184,40 +184,32 @@ export default function InvoicesPage() {
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <FileText className="h-6 w-6 text-amber-500" />
-            <span className="text-xl">Sethiya Gold</span>
-          </Link>
-        </header>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
-            <Skeleton className="h-10 w-32" />
-          </div>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <Skeleton className="h-10 flex-1" />
-            <Skeleton className="h-10 w-40" />
-            <Skeleton className="h-10 w-40" />
-            <Skeleton className="h-10 w-20" />
-          </div>
-          <Card>
-            <CardHeader className="pb-2">
-              <Skeleton className="h-6 w-36" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Array(5).fill(0).map((_, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-14 flex-1" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
+      <>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-20" />
+        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-6 w-36" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {Array(5).fill(0).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-14 flex-1" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </>
     )
   }
 
@@ -227,147 +219,132 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <FileText className="h-6 w-6 text-amber-500" />
-          <span className="text-xl">Sethiya Gold</span>
-        </Link>
-      </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
-          <Link href="/create-invoice">
-            <Button className="bg-amber-600 hover:bg-amber-700">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Create New Invoice
-            </Button>
-          </Link>
-        </div>
-
-        {/* Search and Filter Controls */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search by customer name..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              className="w-40"
-              placeholder="Start Date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-            <span>to</span>
-            <Input
-              type="date"
-              className="w-40"
-              placeholder="End Date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggleSortDirection}
-            title={`Sort by date ${sortDirection === 'asc' ? 'oldest first' : 'newest first'}`}
-          >
-            <ArrowDownUp className="h-4 w-4" />
+    <>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold md:text-2xl">Invoices</h1>
+        <Link href="/create-invoice">
+          <Button className="bg-amber-600 hover:bg-amber-700">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create New Invoice
           </Button>
-        </div>
+        </Link>
+      </div>
 
-        {/* Invoices Table */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Invoice List</CardTitle>
-            <CardDescription>
-              Showing {invoices.length} of {totalCount} invoices
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {invoices.length === 0 ? (
-              <div className="flex h-24 items-center justify-center rounded-md border border-dashed">
-                <p className="text-muted-foreground">No invoices found</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Invoice Number</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by customer name..."
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            className="w-40"
+            placeholder="Start Date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+          <span>to</span>
+          <Input
+            type="date"
+            className="w-40"
+            placeholder="End Date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleSortDirection}
+          title={`Sort by date ${sortDirection === 'asc' ? 'oldest first' : 'newest first'}`}
+        >
+          <ArrowDownUp className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Invoices Table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle>Invoice List</CardTitle>
+          <CardDescription>
+            Showing {invoices.length} of {totalCount} invoices
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {invoices.length === 0 ? (
+            <div className="flex h-24 items-center justify-center rounded-md border border-dashed">
+              <p className="text-muted-foreground">No invoices found</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice Number</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                    <TableCell>{invoice.customer_name_snapshot}</TableCell>
+                    <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
+                    <TableCell>{formatCurrency(invoice.grand_total)}</TableCell>
+                    <TableCell>
+                      <StatusBadge status={invoice.status} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/invoices/${invoice.id}`}>
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoices.map((invoice) => (
-                    <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                      <TableCell>{invoice.customer_name_snapshot}</TableCell>
-                      <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
-                      <TableCell>{formatCurrency(invoice.grand_total)}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={invoice.status} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/invoices/${invoice.id}`}>
-                            <Button variant="outline" size="sm">
-                              View
-                            </Button>
-                          </Link>
-                          <Link href={`/invoices/${invoice.id}/edit`}>
-                            <Button variant="outline" size="sm">
-                              Edit
-                            </Button>
-                          </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-          {totalPages > 1 && (
-            <CardFooter className="flex items-center justify-between border-t p-4">
-              <div className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToPreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Previous Page</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Next Page</span>
-                </Button>
-              </div>
-            </CardFooter>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </Card>
-      </main>
-    </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-2 py-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous Page</span>
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Next Page</span>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   )
 } 
