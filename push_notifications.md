@@ -1,159 +1,140 @@
 
-**Planning Phase:**
+## Implementation Plan: In-App Notification System
 
-**a. Implementation Plan & b. Impacted Files:**
+### A. Step-by-step Implementation Plan
 
-**I. Frontend: Service Worker & Push Subscription Management (Notification System)**
+1.  **Database Schema: `notifications` Table**
+    *   **Action**: Create a new SQL migration file to define the `notifications` table.
+    *   **Details**:
+        *   Table name: `notifications`
+        *   Columns:
+            *   `id` (UUID, primary key, default `uuid_generate_v4()`)
+            *   `user_id` (UUID, foreign key referencing `auth.users(id)` or `profiles(id)`, indexed)
+            *   `type` (TEXT, e.g., 'gold_rate_update', indexed)
+            *   `title` (TEXT, not null)
+            *   `message` (TEXT, not null)
+            *   `created_at` (TIMESTAMPTZ, default `now()`, indexed)
+            *   `read_at` (TIMESTAMPTZ, nullable)
+            *   `action_url` (TEXT, nullable)
+        *   Enable Row Level Security (RLS) on the table.
+        *   Create RLS policies:
+            *   Allow users to `SELECT` their own notifications.
+            *   Allow users to `UPDATE` (specifically the `read_at` column) their own notifications.
+            *   (Backend function will handle `INSERT` with service role key).
+    *   **Post-Action**: Update `lib/database.types.ts` by running the Supabase CLI command to generate types or by manually adding the `notifications` table definition.
 
-1.  **Create Service Worker (`public/service-worker.js`):**
-    *   Implement `install`, `activate` event listeners.
-    *   Implement `push` event listener: Parse payload, use `self.registration.showNotification(title, options)`.
-    *   Implement `notificationclick` event listener: Get URL from `event.notification.data.url`, use `clients.openWindow(url)`, close notification.
-    *   *Files impacted:* `public/service-worker.js` (new file)
+2.  **Backend: Daily Notification Generation (Supabase Cron Job & Edge Function)**
+    *   **Action**: Create a new Supabase Edge Function responsible for generating daily gold rate reminders.
+    *   **Details**:
+        *   Function Name: `generate-daily-gold-rate-reminders`
+        *   Logic:
+            1.  Will be triggered by a cron job.
+            2.  Fetch all `user_id`s from the `profiles` table (or `auth.users` if `profiles` might not exist for all users).
+            3.  For each `user_id`:
+                *   Check if a 'gold_rate_update' notification for the current day (e.g., `created_at` >= today's start and `created_at` < tomorrow's start) already exists for this user.
+                *   If no such notification exists, insert a new notification record:
+                    *   `user_id`: current user's ID
+                    *   `type`: 'gold_rate_update'
+                    *   `title`: "Reminder: Update Gold Rate"
+                    *   `message`: "Don't forget to update today's gold rate to ensure accurate invoicing."
+                    *   `action_url`: `/settings` (or the clarified gold rate page path).
+                    *   `created_at`: current timestamp.
+        *   Use a Supabase client initialized with the service role key for database operations within this function.
+    *   **Scheduling**: Configure a Supabase cron job (via `pg_cron`) to execute this Edge Function daily at 01:30 UTC (approximates 7:00 AM IST). Cron expression: `30 1 * * *`.
 
-2.  **Implement Push Notification Utility Functions (`lib/push-notifications.ts`):**
-    *   `registerServiceWorker()`: Registers `/service-worker.js`.
-    *   `requestNotificationPermission()`: Uses `Notification.requestPermission()`.
-    *   `subscribeUserToPush()`: Calls `registration.pushManager.subscribe()` with VAPID public key.
-    *   `unsubscribeUserFromPush()`: Calls `subscription.unsubscribe()`.
-    *   `sendSubscriptionToBackend(subscription)`: API call to store subscription.
-    *   `removeSubscriptionFromBackend(subscription)`: API call to remove subscription.
-    *   `isPushSupported()`: Checks for `PushManager`.
-    *   *Files impacted:* `lib/push-notifications.ts` (new file)
+3.  **Frontend: Header UI - Notification Bell & Badge**
+    *   **Action**: Modify the main application header to include a notification bell icon and an unread count badge.
+    *   **Details**:
+        *   Add a bell icon (e.g., `Bell` from `lucide-react`) to the header.
+        *   The icon will be a trigger for the notifications dropdown/panel.
+        *   Display a small badge (e.g., red circle with a number) on the bell icon, showing the count of unread notifications.
+        *   If the unread count is zero, the badge should be hidden.
+        *   Add a tooltip to the bell icon (e.g., "Notifications. X unread.").
 
-3.  **Update `AuthProvider` or New Global Context/Hook for Push (`components/auth-provider.tsx` or `hooks/use-push-notifications.tsx`):**
-    *   On user login/session hydration, if notifications were previously enabled (from `user_settings`), attempt to re-register service worker and re-subscribe.
-    *   *Files impacted:* `components/auth-provider.tsx` (or new context/hook)
+4.  **Frontend: UI - Notifications Dropdown/Panel**
+    *   **Action**: Create a new React component for the notifications dropdown/panel.
+    *   **Details**:
+        *   Component Name: `NotificationsDropdown`
+        *   Triggered by clicking the bell icon (from step 3).
+        *   Layout:
+            *   Header: "Notifications" title.
+            *   Scrollable list area for notification items.
+            *   Footer (optional): "Mark all as read" button.
+        *   Each notification item (`NotificationItem` sub-component) should display:
+            *   Title
+            *   Message (can be truncated with a "read more" option if long)
+            *   Timestamp (e.g., "10m ago", "Yesterday", "Oct 20")
+            *   Visual indication of read/unread status (e.g., a dot, background color).
 
-**II. Backend: Store Subscriptions & Send Notifications (Notification System)**
+5.  **Frontend: State Management & Data Fetching for Notifications**
+    *   **Action**: Implement logic to fetch, store, and manage notification data in the frontend.
+    *   **Details**:
+        *   Create a `useNotifications` custom hook or a context provider (`NotificationsProvider`).
+        *   **Fetching**:
+            *   On initial app load (e.g., in a layout component like `app/dashboard/layout.tsx` or the main `app/layout.tsx`), call a Supabase query to fetch the user's notifications.
+            *   Query `notifications` table, `SELECT * WHERE user_id = current_user_id AND read_at IS NULL ORDER BY created_at DESC LIMIT 50` (to get unread count and recent unread).
+            *   Also fetch a limited number of recent notifications (e.g., last 14 days, N-8), `SELECT * WHERE user_id = current_user_id AND created_at >= (NOW() - INTERVAL '14 days') ORDER BY created_at DESC LIMIT 50`.
+        *   **State**:
+            *   Store the list of displayed notifications.
+            *   Store the count of unread notifications.
+        *   Provide functions to:
+            *   Refresh notifications.
+            *   Mark a notification as read.
+            *   Mark all notifications as read.
 
-4.  **Create Supabase Edge Function: `store-push-subscription` (`supabase/functions/store-push-subscription/index.ts`):**
-    *   Accepts `PushSubscription` and `user_id`.
-    *   Upserts into `push_subscriptions` table.
-    *   *Files impacted:* `supabase/functions/store-push-subscription/index.ts` (new file)
+6.  **Frontend: Notification Interaction Logic**
+    *   **Action**: Implement interactivity for the notifications dropdown.
+    *   **Details**:
+        *   **Clicking a Notification**:
+            *   When a 'gold_rate_update' notification item is clicked:
+                1.  Call the `markAsRead` function (from the `useNotifications` hook). This function will make a `PATCH` request to `/rest/v1/notifications?id=eq.{notification_id}` with `{"read_at": "now()"}`.
+                2.  Update the local state: decrease unread count, mark the notification as read in the local list.
+                3.  Navigate the user to the `action_url` specified in the notification (e.g., `/settings`).
+        *   **"Mark all as read" Button (if implemented)**:
+            *   Call a `markAllAsRead` function. This will make a `PATCH` request to `/rest/v1/notifications?user_id=eq.{user_id}&read_at=is.null` with `{"read_at": "now()"}`.
+            *   Update local state: set unread count to 0, mark all displayed notifications as read.
+        *   The bell icon's badge should update reactively based on the unread count.
 
-5.  **Create Supabase Edge Function: `remove-push-subscription` (`supabase/functions/remove-push-subscription/index.ts`):**
-    *   Accepts `endpoint` and `user_id`.
-    *   Deletes from `push_subscriptions` table.
-    *   *Files impacted:* `supabase/functions/remove-push-subscription/index.ts` (new file)
+7.  **Data Retention (Query-based)**
+    *   **Action**: Ensure only recent notifications (last 7-14 days) are fetched and displayed.
+    *   **Details**: Modify the Supabase query in the `useNotifications` hook (step 5) to include a `created_at` filter: `gte.{current_date_minus_14_days}`. This addresses requirement N-8 for display purposes. Actual deletion of older records can be a future enhancement via a separate cron job.
 
-6.  **Create Supabase Edge Function: `send-daily-gold-rate-notification` (`supabase/functions/send-daily-gold-rate-notification/index.ts`):**
-    *   Scheduled daily.
-    *   **Fetch User-Specific Gold Rate (Future Enhancement, for now Mock):** For now, use a mock gold rate as previously planned for the notification payload. *Eventually, this function would fetch the `current_gold_rate` from the user's `user_settings` or a global default if the user hasn't set one.*
-    *   Construct payload (e.g., Title: "Update Today’s Gold Rate", Body: "Gold is ₹[RATE] per 10 grams. Tap to update.", Icon, Data URL: `/gold-rate`).
-    *   Retrieve all active `PushSubscription` objects.
-    *   Send push messages using `web-push` library with VAPID keys. Handle errors.
-    *   *Files impacted:* `supabase/functions/send-daily-gold-rate-notification/index.ts` (new file)
+### B. Files and Functions/Classes to be Impacted
 
-7.  **Create Supabase Edge Function: `send-test-notification` (`supabase/functions/send-test-notification/index.ts`):**
-    *   Accepts `user_id`.
-    *   Retrieves user's `PushSubscription`(s).
-    *   Sends a predefined test notification (Static payload as planned).
-    *   *Files impacted:* `supabase/functions/send-test-notification/index.ts` (new file)
+1.  **Database:**
+    *   `migrations/YYYYMMDDHHMMSS_create_notifications_table.sql` (New)
+    *   `lib/database.types.ts` (Updated via Supabase CLI or manually)
 
-**III. Frontend: Gold Rate Management UI & Logic**
+2.  **Supabase Edge Functions:**
+    *   `supabase/functions/generate-daily-gold-rate-reminders/index.ts` (New) - Handles daily notification creation.
 
-8.  **Modify Dashboard Page (`app/dashboard/page.tsx`):**
-    *   **State:** Add state for `currentGoldRate` (number | null), `goldRateLastUpdated` (string | null), `isRateModalOpen` (boolean), `newRateInput` (string).
-    *   **Fetch Rate:** In `useEffect` (after user auth check), fetch `current_gold_rate` and `gold_rate_last_updated` from `user_settings` for the logged-in user. Update component state.
-    *   **Display:**
-        *   Modify the "Current Gold Rate" footer section to display the fetched rate and last updated time.
-        *   If rate is null, display "Rate not set" or similar.
-        *   Format the "Updated" timestamp appropriately (e.g., "Updated: Today", "Updated: DD/MM/YYYY").
-    *   **Update UI:**
-        *   The "Update Rate" button should toggle `isRateModalOpen`.
-        *   Implement a modal (e.g., using `AlertDialog` or `Dialog` from `components/ui/`) when `isRateModalOpen` is true.
-        *   Modal should contain an `Input` for `newRateInput` and "Save" / "Cancel" buttons.
-    *   **Save Logic:**
-        *   On "Save" in modal:
-            *   Validate `newRateInput`.
-            *   Call a new Supabase Edge Function `update-user-gold-rate` (or directly update `user_settings` if RLS allows and it's simple enough) with the new rate.
-            *   On success, update local state (`currentGoldRate`, `goldRateLastUpdated`), close modal, and show toast.
-    *   *Files impacted:* `app/dashboard/page.tsx`, `lib/database.types.ts` (for `user_settings` type).
+3.  **Frontend - Core Layout/Providers:**
+    *   `app/dashboard/layout.tsx` (or `app/layout.tsx` or relevant shared header component): To integrate the `NotificationBell` component and potentially the `NotificationsProvider`.
+    *   `components/auth-provider.tsx`: Might be a place to initialize notification fetching after user logs in, if not using a dedicated `NotificationsProvider`.
 
-9.  **Create Gold Rate Page (`app/gold-rate/page.tsx`):**
-    *   **State:** `currentGoldRate` (number | null), `goldRateLastUpdated` (string | null), `newRateInput` (string), `isSaving` (boolean).
-    *   **Layout:** Basic page structure with a title like "Manage Gold Rate".
-    *   **Fetch Rate:** In `useEffect`, fetch `current_gold_rate` and `gold_rate_last_updated` from `user_settings` for the logged-in user. Populate `newRateInput` with the current rate if available.
-    *   **Display:** Show the current rate and last updated time.
-    *   **Input:** An `Input` field for the new gold rate, pre-filled with `newRateInput`.
-    *   **Save Button:**
-        *   On click: Validate input.
-        *   Call the same Supabase Edge Function `update-user-gold-rate` (or direct DB update).
-        *   On success, update local state and show toast.
-    *   *Files impacted:* `app/gold-rate/page.tsx` (new file)
+4.  **Frontend - New UI Components:**
+    *   `components/ui/notification-bell.tsx` (New) - Bell icon with badge.
+    *   `components/ui/notifications-dropdown.tsx` (New) - Dropdown/panel UI.
+    *   `components/ui/notification-item.tsx` (New) - Individual notification display.
 
-**IV. Backend: Update Gold Rate (User Settings)**
+5.  **Frontend - Hooks/State Management:**
+    *   `hooks/use-notifications.ts` (New) - Custom hook for notification logic.
+    *   (Alternatively) `components/notifications-provider.tsx` (New) - If using context.
 
-10. **Create Supabase Edge Function (Optional) or Direct DB Update Logic for Gold Rate:**
-    *   **Function `update-user-gold-rate` (`supabase/functions/update-user-gold-rate/index.ts`):**
-        *   Accepts `new_rate` (numeric) and `user_id`.
-        *   Updates `current_gold_rate` and `gold_rate_last_updated` (to `now()`) in the `user_settings` table for the given `user_id`.
-        *   This function is preferable if there's any additional logic or validation needed beyond simple RLS.
-    *   **Direct DB Update (Alternative):** If RLS policies on `user_settings` allow users to update their own `current_gold_rate` and `gold_rate_last_updated`, the frontend can call `supabase.from('user_settings').update(...)` directly.
-    *   *Files impacted:* `supabase/functions/update-user-gold-rate/index.ts` (new file, if chosen) or client-side logic in `app/dashboard/page.tsx` and `app/gold-rate/page.tsx`.
+6.  **Frontend - Navigation/Target Page:**
+    *   `app/settings/page.tsx` (or the specified gold rate update page): No direct code changes needed for this feature, but it's the target of the `action_url`.
 
-**V. Frontend: Settings UI (Notification System)**
+7.  **Supabase Client:**
+    *   `lib/supabase.ts` (Existing) - Will be used by the `useNotifications` hook and Edge Functions.
 
-11. **Modify Settings Page (`app/settings/page.tsx`):**
-    *   Add a new "Notifications" tab/section.
-    *   **UI Elements:**
-        *   `Switch`: "Enable Browser Notifications".
-        *   `Button`: "Send Test Notification".
-        *   Status display: "Subscribed since [Date]", "Not Subscribed", "Permission denied", etc.
-    *   **Logic:**
-        *   Toggle `Switch`: Manage `Notification.requestPermission()`, `subscribeUserToPush()`, `unsubscribeUserFromPush()`, calls to `sendSubscriptionToBackend`/`removeSubscriptionFromBackend`, and update `user_settings.notifications_browser_enabled`.
-        *   "Send Test" button: Calls `send-test-notification` Supabase function.
-        *   Read initial switch state from `user_settings.notifications_browser_enabled`.
-        *   Check `Notification.permission` on load.
-    *   *Files impacted:* `app/settings/page.tsx`, `lib/database.types.ts`.
+### C. Configuration or Database Migrations Required
 
-**VI. Environment Variables & Configuration (Notification System)**
+1.  **Database Migration:**
+    *   The SQL script from **A.1** needs to be created and applied to your Supabase instance.
+    *   After migration, regenerate or update `lib/database.types.ts`.
 
-12. **Add VAPID Keys:**
-    *   `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (client-accessible).
-    *   `VAPID_PRIVATE_KEY` (Supabase Edge Function environment variable).
-    *   *Files impacted:* `.env`, Supabase project settings.
+2.  **Supabase Cron Job:**
+    *   Configure the cron job in the Supabase dashboard (Database > Cron Jobs) or via Supabase CLI (`supabase functions deploy generate-daily-gold-rate-reminders --schedule "30 1 * * *"`).
+    *   The Edge Function `generate-daily-gold-rate-reminders` needs to be deployed.
 
-**c. Database Migrations Required:**
-
-1.  **Create `push_subscriptions` table (Notification System):**
-    ```sql
-    CREATE TABLE push_subscriptions (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-        subscription_details JSONB NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
-        endpoint TEXT UNIQUE NOT NULL,
-        CONSTRAINT unique_user_endpoint UNIQUE (user_id, endpoint)
-    );
-
-    -- RLS for push_subscriptions:
-    ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
-
-    CREATE POLICY "Users can manage their own push subscriptions"
-    ON push_subscriptions
-    FOR ALL
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
-
-    CREATE POLICY "Service role can access all push subscriptions"
-    ON push_subscriptions
-    FOR SELECT
-    USING (true); -- Adjust if more specific role is used for backend functions
-    ```
-    *   *File impacted:* `migrations/XXXXXXXXXXXXXX_add_push_subscriptions_table.sql` (new file)
-
-2.  **Update `user_settings` table (For Notifications & Gold Rate):**
-    ```sql
-    ALTER TABLE user_settings
-    ADD COLUMN notifications_browser_enabled BOOLEAN DEFAULT false,
-    ADD COLUMN push_subscription_last_updated TIMESTAMPTZ,
-    ADD COLUMN current_gold_rate NUMERIC(10, 2) NULL,
-    ADD COLUMN gold_rate_last_updated TIMESTAMPTZ NULL;
-    ```
-    *   *File impacted:* `migrations/XXXXXXXXXXXXXX_update_user_settings_for_notifications_gold_rate.sql` (new file)
-
-This integrated plan addresses both the notification system and the interactive gold rate feature. The gold rate aspect primarily touches the dashboard, a new `/gold-rate` page, and the `user_settings` table, while leveraging the new `update-user-gold-rate` backend logic.
-
-
+3.  **No new environment variables are anticipated for this feature.**
