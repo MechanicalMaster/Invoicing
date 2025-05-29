@@ -6,27 +6,53 @@ import { Badge } from "@/components/ui/badge"
 
 interface StockCategoryCardProps {
   category: {
-    id: string
     name: string
     count: number
-    icon: string
+    totalValue: number
+    images: string[]
   }
 }
 
 export function StockCategoryCard({ category }: StockCategoryCardProps) {
+  // Create a small image gallery for the category
+  const imagesToShow = category.images.slice(0, 4);
+  const defaultImage = "/placeholder.svg?height=40&width=40";
+  
   return (
-    <Link href={`/stock?category=${category.id}`}>
+    <Link href={`/stock?category=${category.name}`}>
       <Card className="overflow-hidden transition-all hover:border-primary/30 hover:shadow-md">
         <CardContent className="p-6">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Image src={category.icon || "/placeholder.svg"} alt={category.name} width={40} height={40} />
-            </div>
+          <div className="flex items-start justify-between">
             <div>
               <h3 className="font-medium">{category.name}</h3>
               <p className="text-sm text-muted-foreground">
                 {category.count} {category.count === 1 ? "item" : "items"}
               </p>
+              <p className="text-sm font-medium mt-1">
+                ₹{category.totalValue.toLocaleString()}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-1 w-20">
+              {imagesToShow.map((image, index) => (
+                <div key={index} className="relative h-10 w-10 rounded-md overflow-hidden bg-muted">
+                  <Image
+                    src={image || defaultImage}
+                    alt={`${category.name} item ${index + 1}`}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ))}
+              {imagesToShow.length === 0 && (
+                <div className="relative h-10 w-10 rounded-md overflow-hidden bg-muted">
+                  <Image
+                    src={defaultImage}
+                    alt={category.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

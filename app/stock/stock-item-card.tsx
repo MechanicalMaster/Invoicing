@@ -20,6 +20,8 @@ interface StockItemCardProps {
     images: string[]
     description: string
     dateAdded: Date
+    is_sold?: boolean
+    sold_at?: string | null
   }
 }
 
@@ -41,8 +43,11 @@ export function StockItemCard({ item }: StockItemCardProps) {
             </Badge>
           </div>
           <div className="absolute bottom-2 left-2">
-            <Badge variant={item.stock > 0 ? "outline" : "destructive"} className="bg-background/80 backdrop-blur-sm">
-              {item.stock > 0 ? `In Stock: ${item.stock}` : "Out of Stock"}
+            <Badge 
+              variant={item.is_sold ? "destructive" : "outline"} 
+              className="bg-background/80 backdrop-blur-sm"
+            >
+              {item.is_sold ? "Sold" : "In Stock"}
             </Badge>
           </div>
         </div>

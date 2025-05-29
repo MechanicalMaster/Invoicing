@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, FileText, Home, Save, Upload, X, Plus } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,7 +28,11 @@ import supabase from "@/lib/supabase"
 import { compressImage } from "@/lib/imageUtils"
 import { Skeleton } from "@/components/ui/skeleton"
 
-export default function EditStockItemPage({ params }: { params: { id: string } }) {
+export default function EditStockItemPage() {
+  // Use useParams hook instead of accessing params directly
+  const params = useParams()
+  const itemId = params.id as string
+  
   const router = useRouter()
   const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -65,7 +69,7 @@ export default function EditStockItemPage({ params }: { params: { id: string } }
     }
 
     fetchItemData()
-  }, [user, params.id])
+  }, [user, itemId])
 
   const fetchItemData = async () => {
     try {
@@ -76,7 +80,7 @@ export default function EditStockItemPage({ params }: { params: { id: string } }
         .from('stock_items')
         .select('*')
         .eq('user_id', user?.id)
-        .eq('item_number', params.id)
+        .eq('item_number', itemId)
         .single()
 
       if (error) {
@@ -328,7 +332,7 @@ export default function EditStockItemPage({ params }: { params: { id: string } }
       const { data, error: dbError } = await supabase
         .from('stock_items')
         .update(stockItemData)
-        .eq('item_number', params.id)
+        .eq('item_number', itemId)
         .eq('user_id', user.id)
         .select()
         
@@ -348,7 +352,7 @@ export default function EditStockItemPage({ params }: { params: { id: string } }
       })
       
       // Redirect to item view page
-      router.push(`/stock/${params.id}`)
+      router.push(`/stock/${itemId}`)
       
     } catch (error: any) {
       console.error("Error updating stock item:", error)
@@ -429,7 +433,7 @@ export default function EditStockItemPage({ params }: { params: { id: string } }
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
-          <Link href={`/stock/${params.id}`}>
+          <Link href={`/stock/${itemId}`}>
             <Button variant="ghost" size="sm" className="gap-1">
               <ArrowLeft className="h-4 w-4" />
               Back to Item
@@ -678,7 +682,7 @@ export default function EditStockItemPage({ params }: { params: { id: string } }
             </CardContent>
 
             <CardFooter className="flex justify-between">
-              <Link href={`/stock/${params.id}`}>
+              <Link href={`/stock/${itemId}`}>
                 <Button variant="outline" type="button">
                   Cancel
                 </Button>

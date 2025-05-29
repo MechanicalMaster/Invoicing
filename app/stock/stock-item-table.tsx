@@ -1,112 +1,191 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
-import { Eye, Edit, MoreHorizontal } from "lucide-react"
+import { ChevronDown, Eye, Plus } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+
+interface StockItem {
+  id: string
+  name: string
+  category: string
+  material: string
+  weight: number
+  purchasePrice: number
+  supplier?: string
+  is_sold?: boolean
+  sold_at?: string | null
+}
 
 interface StockItemTableProps {
-  items: {
-    id: string
-    name: string
-    category: string
-    material: string
-    purity: string
-    weight: number
-    makingCharges: number
-    price: number
-    stock: number
-    images: string[]
-    description: string
-    dateAdded: Date
-  }[]
+  items: StockItem[]
 }
 
 export function StockItemTable({ items }: StockItemTableProps) {
+  const router = useRouter()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"all" | "in-stock" | "sold">("all")
+  
+  // Filter items based on search term and status filter
+  const filteredItems = items.filter(item => {
+    // Apply text search filter
+    const matchesSearch = searchTerm === "" || 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.material.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Apply status filter
+    const matchesStatus = 
+      statusFilter === "all" || 
+      (statusFilter === "in-stock" && !item.is_sold) ||
+      (statusFilter === "sold" && item.is_sold);
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Calculate totals
+  const totalItems = filteredItems.length;
+  const totalValue = filteredItems.reduce((sum, item) => sum + item.purchasePrice, 0);
+  const totalWeight = filteredItems.reduce((sum, item) => sum + item.weight, 0);
+
   return (
-    <div className="rounded-md border">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="py-3 pl-4 pr-3 text-left text-sm font-medium">Item</th>
-              <th className="px-3 py-3 text-left text-sm font-medium">ID</th>
-              <th className="px-3 py-3 text-left text-sm font-medium">Category</th>
-              <th className="px-3 py-3 text-left text-sm font-medium">Material</th>
-              <th className="px-3 py-3 text-left text-sm font-medium">Weight</th>
-              <th className="px-3 py-3 text-left text-sm font-medium">Price</th>
-              <th className="px-3 py-3 text-left text-sm font-medium">Stock</th>
-              <th className="px-3 py-3 text-left text-sm font-medium">Added</th>
-              <th className="px-3 py-3 text-right text-sm font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className="border-b">
-                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm">
-                  <div className="font-medium">{item.name}</div>
-                  <div className="text-xs text-muted-foreground line-clamp-1">{item.description}</div>
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm">{item.id}</td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm">{item.category}</td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm">
-                  {item.material} {item.purity}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm">{item.weight}g</td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm">₹{item.price.toLocaleString()}</td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm">
-                  <Badge variant={item.stock > 0 ? "outline" : "destructive"}>
-                    {item.stock > 0 ? item.stock : "Out of Stock"}
-                  </Badge>
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm">
-                  {item.dateAdded.toLocaleDateString("en-IN", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-right text-sm">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href={`/stock/${item.id}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/stock/${item.id}/edit`}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Item
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>
-                        <span className="text-destructive">Delete Item</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="w-full">
+      <div className="flex items-center justify-between py-4">
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Search items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="ml-auto">
+                Filter
+                <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Status</DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={statusFilter === "all"}
+                onCheckedChange={() => setStatusFilter("all")}
+              >
+                All Items
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={statusFilter === "in-stock"}
+                onCheckedChange={() => setStatusFilter("in-stock")}
+              >
+                In Stock
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={statusFilter === "sold"}
+                onCheckedChange={() => setStatusFilter("sold")}
+              >
+                Sold
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/stock/add">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Item
+            </Button>
+          </Link>
+        </div>
+      </div>
+      
+      <div className="flex justify-between py-2 text-sm text-muted-foreground">
+        <div>Showing {filteredItems.length} items</div>
+        <div className="space-x-4">
+          <span>Total Value: ₹{totalValue.toLocaleString()}</span>
+          <span>Total Weight: {totalWeight.toFixed(2)}g</span>
+        </div>
+      </div>
+      
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Item</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Material</TableHead>
+              <TableHead>Weight</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredItems.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  No items found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredItems.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{item.category}</TableCell>
+                  <TableCell>{item.material}</TableCell>
+                  <TableCell>{item.weight}g</TableCell>
+                  <TableCell>₹{item.purchasePrice.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <Badge variant={item.is_sold ? "destructive" : "outline"}>
+                      {item.is_sold ? "Sold" : "In Stock"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => router.push(`/stock/${item.id}`)}
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span className="sr-only">View</span>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   )

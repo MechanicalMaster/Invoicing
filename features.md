@@ -1,21 +1,3 @@
-
-1. **Customer Management System**  
-   - Store and manage detailed customer profiles, including contact information, purchase history, and preferences.  
-
-2. **Inventory Tracking with Real-Time Updates**  
-   - Categorize items by type (e.g., rings, necklaces), material (e.g., gold, silver), and price range for efficient management.
-
-3. **Advanced Invoicing Features**  
-   - Ability to select different invoice layouts from a
-   
-4. **Order Management**  
-   - Track and manage the entire lifecycle of customer orders, from placement to delivery.  
-   - Handle custom orders with specific customer requirements (e.g., engraving, resizing) and provide status updates.
-
-5. **Supplier Management**  
-   - Maintain supplier details, including contact information and purchase history.  
-   - Track supplier performance (e.g., delivery times, quality) to ensure reliable procurement and supply chain efficiency.
-
 6. **Marketing and Promotions**  
    - Send promotional emails or SMS or Whatsapp with special offers, discounts, or new arrivals.  
 

@@ -274,11 +274,13 @@ export type Database = {
           description: string | null
           id: string
           image_urls: string[] | null
+          is_sold: boolean
           item_number: string
           material: string
           purchase_date: string | null
           purchase_price: number
           purity: string | null
+          sold_at: string | null
           supplier: string | null
           updated_at: string
           user_id: string
@@ -290,11 +292,13 @@ export type Database = {
           description?: string | null
           id?: string
           image_urls?: string[] | null
+          is_sold?: boolean
           item_number: string
           material: string
           purchase_date?: string | null
           purchase_price: number
           purity?: string | null
+          sold_at?: string | null
           supplier?: string | null
           updated_at?: string
           user_id: string
@@ -306,11 +310,13 @@ export type Database = {
           description?: string | null
           id?: string
           image_urls?: string[] | null
+          is_sold?: boolean
           item_number?: string
           material?: string
           purchase_date?: string | null
           purchase_price?: number
           purity?: string | null
+          sold_at?: string | null
           supplier?: string | null
           updated_at?: string
           user_id?: string
@@ -379,6 +385,9 @@ export type Database = {
           label_include_purity: boolean | null
           label_include_qr_code: boolean | null
           label_include_weight: boolean | null
+          label_qr_error_correction:
+            | Database["public"]["Enums"]["qr_error_correction_level_enum"]
+            | null
           label_type: Database["public"]["Enums"]["label_type_enum"] | null
           notifications_email_enabled: boolean | null
           notifications_frequency:
@@ -416,6 +425,9 @@ export type Database = {
           label_include_purity?: boolean | null
           label_include_qr_code?: boolean | null
           label_include_weight?: boolean | null
+          label_qr_error_correction?:
+            | Database["public"]["Enums"]["qr_error_correction_level_enum"]
+            | null
           label_type?: Database["public"]["Enums"]["label_type_enum"] | null
           notifications_email_enabled?: boolean | null
           notifications_frequency?:
@@ -453,6 +465,9 @@ export type Database = {
           label_include_purity?: boolean | null
           label_include_qr_code?: boolean | null
           label_include_weight?: boolean | null
+          label_qr_error_correction?:
+            | Database["public"]["Enums"]["qr_error_correction_level_enum"]
+            | null
           label_type?: Database["public"]["Enums"]["label_type_enum"] | null
           notifications_email_enabled?: boolean | null
           notifications_frequency?:
@@ -490,6 +505,7 @@ export type Database = {
       label_type_enum: "standard" | "large" | "small"
       notification_frequency_enum: "instant" | "daily" | "weekly"
       photo_compression_enum: "none" | "low" | "medium" | "high"
+      qr_error_correction_level_enum: "L" | "M" | "Q" | "H"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -608,6 +624,7 @@ export const Constants = {
       label_type_enum: ["standard", "large", "small"],
       notification_frequency_enum: ["instant", "daily", "weekly"],
       photo_compression_enum: ["none", "low", "medium", "high"],
+      qr_error_correction_level_enum: ["L", "M", "Q", "H"],
     },
   },
 } as const 

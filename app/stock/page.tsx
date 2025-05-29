@@ -40,6 +40,9 @@ type StockItem = {
   images: string[]
   description: string
   dateAdded: Date
+  is_sold: boolean
+  sold_at: Date | null
+  supplier: string | null
 }
 
 type StockCategory = {
@@ -64,6 +67,8 @@ export default function StockPage() {
     category: "all",
     material: "all"
   })
+  const [activeView, setActiveView] = useState("grid")
+  const [error, setError] = useState<string | null>(null)
 
   // Fetch stock data when component mounts or user changes
   useEffect(() => {
@@ -81,6 +86,7 @@ export default function StockPage() {
     
     try {
       setIsLoading(true)
+      setError(null)
       
       const { data, error } = await supabase
         .from('stock_items')
@@ -93,11 +99,35 @@ export default function StockPage() {
       }
       
       if (data) {
-        const mappedItems = processStockData(data)
-        setStockItems(mappedItems)
+        // Map the data to the format expected by the components
+        const mappedItems = data.map(item => ({
+          id: item.item_number,
+          name: item.description || `${item.material} ${item.category}`,
+          category: item.category,
+          material: item.material,
+          purity: item.purity || 'N/A',
+          weight: item.weight,
+          makingCharges: 0, // Not in database, default to 0
+          price: item.purchase_price,
+          purchasePrice: item.purchase_price,
+          stock: 1, // Assuming each row is one item
+          images: item.image_urls && item.image_urls.length > 0 
+            ? item.image_urls 
+            : ["/placeholder.svg?height=300&width=300"],
+          description: item.description || `${item.material} ${item.category} (${item.purity || 'N/A'})`,
+          dateAdded: new Date(item.created_at),
+          is_sold: item.is_sold,
+          sold_at: item.sold_at,
+          supplier: item.supplier
+        }));
+        
+        setStockItems(mappedItems);
+      } else {
+        setStockItems([]);
       }
     } catch (error: any) {
       console.error('Error fetching stock data:', error)
+      setError(error.message)
       toast({
         title: "Error fetching stock data",
         description: error.message || "Could not load your stock items. Please try again.",
@@ -201,6 +231,22 @@ export default function StockPage() {
     }))
   }
 
+  // Group items by category for the category view
+  const groupedByCategory = stockItems.reduce((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = []
+    }
+    acc[item.category].push(item)
+    return acc
+  }, {} as Record<string, StockItem[]>)
+
+  const categoryCards = Object.keys(groupedByCategory).map((category) => ({
+    name: category,
+    count: groupedByCategory[category].length,
+    totalValue: groupedByCategory[category].reduce((sum, item) => sum + item.price, 0),
+    images: groupedByCategory[category].slice(0, 4).map(item => item.images[0]),
+  }))
+
   // Render loading skeletons for categories
   const renderCategorySkeletons = () => {
     return Array(8).fill(0).map((_, index) => (
@@ -302,6 +348,26 @@ export default function StockPage() {
     </div>
   )
 
+  // Render error state
+  if (error) {
+    return (
+      <div className="flex min-h-screen w-full flex-col">
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
+          <Link href="/" className="flex items-center gap-2 font-semibold">
+            <FileText className="h-6 w-6 text-primary" />
+            <span className="text-xl">Sethiya Gold</span>
+          </Link>
+        </header>
+        <main className="flex flex-1 flex-col items-center justify-center gap-4 p-4 md:gap-8 md:p-8 text-center">
+          <div className="text-destructive text-5xl">⚠️</div>
+          <h1 className="text-2xl font-bold">Error Loading Stock</h1>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={fetchStockData}>Retry</Button>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
@@ -389,26 +455,12 @@ export default function StockPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="categories" className="w-full">
+        <Tabs defaultValue="grid" onValueChange={setActiveView}>
           <TabsList>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="grid">Grid View</TabsTrigger>
             <TabsTrigger value="table">Table View</TabsTrigger>
+            <TabsTrigger value="category">Category View</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="categories" className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {isLoading ? (
-                renderCategorySkeletons()
-              ) : derivedCategories.length > 0 ? (
-                derivedCategories.map((category) => (
-                  <StockCategoryCard key={category.id} category={category} />
-                ))
-              ) : (
-                <EmptyState message="No categories found" />
-              )}
-            </div>
-          </TabsContent>
 
           <TabsContent value="grid" className="space-y-4">
             <div className="flex items-center justify-between">
@@ -458,6 +510,20 @@ export default function StockPage() {
                 showAddButton={stockItems.length === 0}
               />
             )}
+          </TabsContent>
+
+          <TabsContent value="category" className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {isLoading ? (
+                renderCategorySkeletons()
+              ) : categoryCards.length > 0 ? (
+                categoryCards.map((category) => (
+                  <StockCategoryCard key={category.name} category={category} />
+                ))
+              ) : (
+                <EmptyState message="No categories found" />
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </main>

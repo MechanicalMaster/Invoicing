@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, FileText, Home, Edit } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { ArrowLeft, FileText, Home, Edit, Printer, Trash2, Tag, ShoppingBag } from "lucide-react"
+import { useRouter, useParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,13 +14,49 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/components/auth-provider"
 import supabase from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
+import StockItemLabelDownloadWrapper from "../components/stock-item-label-download-wrapper"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
-export default function StockItemDetailPage({ params }: { params: { id: string } }) {
+// Define the label settings type
+type LabelSettings = {
+  type: 'standard' | 'large' | 'small';
+  copies: number;
+  includeProductName: boolean;
+  includePrice: boolean;
+  includeBarcode: boolean;
+  includeDate: boolean;
+  includeMetal: boolean;
+  includeWeight: boolean;
+  includePurity: boolean;
+  includeQrCode: boolean;
+  qrErrorCorrection: 'L' | 'M' | 'Q' | 'H';
+};
+
+export default function StockItemDetailPage() {
+  const params = useParams()
+  const itemId = params.id as string
+  
   const router = useRouter()
   const { user } = useAuth()
   const [itemData, setItemData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showLabelDownload, setShowLabelDownload] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isMarkingAsSold, setIsMarkingAsSold] = useState(false)
+  const [labelSettings, setLabelSettings] = useState<LabelSettings>({
+    type: "standard",
+    copies: 1,
+    includeProductName: true,
+    includePrice: true,
+    includeBarcode: true,
+    includeDate: true,
+    includeMetal: true,
+    includeWeight: true,
+    includePurity: true,
+    includeQrCode: true,
+    qrErrorCorrection: "M"
+  })
 
   // Fetch item data when component mounts or when user/params change
   useEffect(() => {
@@ -30,7 +66,7 @@ export default function StockItemDetailPage({ params }: { params: { id: string }
     }
 
     fetchItemData()
-  }, [user, params.id])
+  }, [user, itemId])
 
   const fetchItemData = async () => {
     try {
@@ -41,7 +77,7 @@ export default function StockItemDetailPage({ params }: { params: { id: string }
         .from('stock_items')
         .select('*')
         .eq('user_id', user?.id)
-        .eq('item_number', params.id)
+        .eq('item_number', itemId)
         .single()
 
       if (error) {
@@ -69,6 +105,8 @@ export default function StockItemDetailPage({ params }: { params: { id: string }
           purchaseDate: data.purchase_date ? new Date(data.purchase_date) : new Date(),
           purchasePrice: data.purchase_price,
           location: "Main Showcase", // Default value as not in schema
+          is_sold: data.is_sold,
+          sold_at: data.sold_at ? new Date(data.sold_at) : null,
           // Add other fields with default values or from data if available
           specifications: {
             length: "N/A",
@@ -101,6 +139,190 @@ export default function StockItemDetailPage({ params }: { params: { id: string }
       setIsLoading(false)
     }
   }
+
+  const handlePrintLabel = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to print labels.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Fetch user settings to get label configuration
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        if (error.code !== 'PGRST116') {
+          throw error;
+        }
+        // No settings found, use default
+      } else if (data) {
+        // Update label settings from user preferences
+        setLabelSettings({
+          type: data.label_type || labelSettings.type,
+          copies: data.label_copies || labelSettings.copies,
+          includeProductName: data.label_include_product_name ?? labelSettings.includeProductName,
+          includePrice: data.label_include_price ?? labelSettings.includePrice,
+          includeBarcode: data.label_include_barcode ?? labelSettings.includeBarcode,
+          includeDate: data.label_include_date ?? labelSettings.includeDate,
+          includeMetal: data.label_include_metal ?? labelSettings.includeMetal,
+          includeWeight: data.label_include_weight ?? labelSettings.includeWeight,
+          includePurity: data.label_include_purity ?? labelSettings.includePurity,
+          includeQrCode: data.label_include_qr_code ?? labelSettings.includeQrCode,
+          qrErrorCorrection: data.label_qr_error_correction || labelSettings.qrErrorCorrection
+        });
+      }
+      
+      // Show the label download component
+      setShowLabelDownload(true);
+    } catch (error: any) {
+      console.error('Error fetching label settings:', error);
+      toast({
+        title: "Error loading label settings",
+        description: error.message || "Failed to load label settings",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to delete items.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      
+      const { error } = await supabase
+        .from('stock_items')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('item_number', itemId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Item deleted",
+        description: "The item has been successfully deleted",
+      });
+
+      // Redirect to the stock list
+      router.push("/stock");
+    } catch (error: any) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: "Error deleting item",
+        description: error.message || "Failed to delete item",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleMarkAsSold = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to mark items as sold.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsMarkingAsSold(true);
+      
+      const { error } = await supabase
+        .from('stock_items')
+        .update({
+          is_sold: true,
+          sold_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
+        .eq('item_number', itemId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Item marked as sold",
+        description: "The item has been successfully marked as sold",
+      });
+
+      // Refresh the data
+      await fetchItemData();
+    } catch (error: any) {
+      console.error('Error marking item as sold:', error);
+      toast({
+        title: "Error marking item as sold",
+        description: error.message || "Failed to mark item as sold",
+        variant: "destructive"
+      });
+    } finally {
+      setIsMarkingAsSold(false);
+    }
+  };
+
+  const handleMarkAsUnsold = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to update items.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsMarkingAsSold(true);
+      
+      const { error } = await supabase
+        .from('stock_items')
+        .update({
+          is_sold: false,
+          sold_at: null,
+        })
+        .eq('user_id', user.id)
+        .eq('item_number', itemId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Item marked as in stock",
+        description: "The item has been returned to inventory",
+      });
+
+      // Refresh the data
+      await fetchItemData();
+    } catch (error: any) {
+      console.error('Error marking item as unsold:', error);
+      toast({
+        title: "Error updating item",
+        description: error.message || "Failed to update item",
+        variant: "destructive"
+      });
+    } finally {
+      setIsMarkingAsSold(false);
+    }
+  };
 
   // Render loading skeleton
   if (isLoading) {
@@ -198,13 +420,80 @@ export default function StockItemDetailPage({ params }: { params: { id: string }
             </Link>
             <h1 className="ml-4 text-xl font-semibold md:text-2xl">{itemData.name}</h1>
           </div>
-          <Link href={`/stock/${params.id}/edit`}>
-            <Button className="gap-2">
-              <Edit className="h-4 w-4" />
-              Edit Item
+          <div className="flex gap-2">
+            <Button onClick={handlePrintLabel} className="gap-2">
+              <Printer className="h-4 w-4" />
+              Print Label
             </Button>
-          </Link>
+
+            {!itemData.is_sold ? (
+              <ConfirmDialog
+                trigger={
+                  <Button className="gap-2" variant="outline" disabled={isMarkingAsSold}>
+                    <ShoppingBag className="h-4 w-4" />
+                    {isMarkingAsSold ? "Processing..." : "Mark as Sold"}
+                  </Button>
+                }
+                title="Mark Item as Sold"
+                description="Are you sure you want to mark this item as sold? This will remove it from active inventory."
+                actionText="Mark as Sold"
+                onConfirm={handleMarkAsSold}
+              />
+            ) : (
+              <ConfirmDialog
+                trigger={
+                  <Button className="gap-2" variant="outline" disabled={isMarkingAsSold}>
+                    <Tag className="h-4 w-4" />
+                    {isMarkingAsSold ? "Processing..." : "Return to Stock"}
+                  </Button>
+                }
+                title="Return Item to Stock"
+                description="Are you sure you want to mark this item as in stock? This will return it to active inventory."
+                actionText="Return to Stock"
+                onConfirm={handleMarkAsUnsold}
+              />
+            )}
+
+            <ConfirmDialog
+              trigger={
+                <Button className="gap-2" variant="destructive" disabled={isDeleting}>
+                  <Trash2 className="h-4 w-4" />
+                  {isDeleting ? "Deleting..." : "Delete Item"}
+                </Button>
+              }
+              title="Delete Item"
+              description="Are you sure you want to delete this item? This action cannot be undone."
+              actionText="Delete Item"
+              variant="destructive"
+              onConfirm={handleDeleteItem}
+            />
+
+            <Link href={`/stock/${itemId}/edit`}>
+              <Button className="gap-2">
+                <Edit className="h-4 w-4" />
+                Edit Item
+              </Button>
+            </Link>
+          </div>
         </div>
+
+        {showLabelDownload && (
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>Print Label</CardTitle>
+              <CardDescription>Download the label PDF and print it</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <StockItemLabelDownloadWrapper 
+                  itemData={itemData} 
+                  labelSettings={labelSettings} 
+                />
+                <Button variant="outline" onClick={() => setShowLabelDownload(false)}>Cancel</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {/* Image Gallery */}
@@ -222,8 +511,11 @@ export default function StockItemDetailPage({ params }: { params: { id: string }
                   <CardTitle>{itemData.name}</CardTitle>
                   <CardDescription>Item ID: {itemData.id}</CardDescription>
                 </div>
-                <Badge variant={itemData.stock > 0 ? "outline" : "destructive"} className="text-sm">
-                  {itemData.stock > 0 ? `In Stock: ${itemData.stock}` : "Out of Stock"}
+                <Badge 
+                  variant={itemData.is_sold ? "destructive" : "outline"} 
+                  className="text-sm"
+                >
+                  {itemData.is_sold ? "Sold" : "In Stock"}
                 </Badge>
               </div>
             </CardHeader>
@@ -249,32 +541,28 @@ export default function StockItemDetailPage({ params }: { params: { id: string }
                   <div className="font-medium">{itemData.weight}g</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Supplier</div>
-                  <div className="font-medium">{itemData.supplier}</div>
+                  <div className="text-sm text-muted-foreground">Purchase Date</div>
+                  <div className="font-medium">
+                    {itemData.purchaseDate.toLocaleDateString()}
+                  </div>
                 </div>
               </div>
+
+              {itemData.is_sold && itemData.sold_at && (
+                <div>
+                  <div className="text-sm text-muted-foreground">Sold Date</div>
+                  <div className="font-medium">
+                    {new Date(itemData.sold_at).toLocaleDateString()}
+                  </div>
+                </div>
+              )}
 
               <Separator />
 
-              <div className="space-y-2">
+              <div>
                 <div className="text-sm font-medium">Description</div>
-                <div className="text-sm text-muted-foreground">{itemData.description}</div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Purchase Date</div>
-                  <div className="font-medium">
-                    {itemData.purchaseDate.toLocaleDateString("en-IN", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Purchase Price</div>
-                  <div className="font-medium">₹{itemData.purchasePrice.toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">
+                  {itemData.description || "No description available."}
                 </div>
               </div>
             </CardContent>

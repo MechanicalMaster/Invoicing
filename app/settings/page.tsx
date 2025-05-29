@@ -57,7 +57,8 @@ export default function SettingsPage() {
     includeMetal: true,
     includeWeight: true,
     includePurity: true,
-    includeQrCode: true
+    includeQrCode: true,
+    qrErrorCorrection: "M"
   });
   
   const [photoSettings, setPhotoSettings] = useState({
@@ -131,7 +132,8 @@ export default function SettingsPage() {
             includeMetal: data.label_include_metal ?? labelSettings.includeMetal,
             includeWeight: data.label_include_weight ?? labelSettings.includeWeight,
             includePurity: data.label_include_purity ?? labelSettings.includePurity,
-            includeQrCode: data.label_include_qr_code ?? labelSettings.includeQrCode
+            includeQrCode: data.label_include_qr_code ?? labelSettings.includeQrCode,
+            qrErrorCorrection: data.label_qr_error_correction || labelSettings.qrErrorCorrection
           });
           
           // Update photo settings
@@ -231,6 +233,7 @@ export default function SettingsPage() {
         label_include_weight: labelSettings.includeWeight,
         label_include_purity: labelSettings.includePurity,
         label_include_qr_code: labelSettings.includeQrCode,
+        label_qr_error_correction: labelSettings.qrErrorCorrection,
         // Photo Settings
         photo_compression_level: photoSettings.compressionLevel,
       };
@@ -690,129 +693,130 @@ export default function SettingsPage() {
                     
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="labelType">Label Type</Label>
+                        <Label htmlFor="label-type">Label Type</Label>
                         <Select 
                           value={labelSettings.type}
-                          onValueChange={(value) => handleLabelSettingChange("type", value)}
+                          onValueChange={(value) => handleLabelSettingChange('type', value)}
                         >
-                          <SelectTrigger id="labelType">
-                            <SelectValue placeholder="Standard (2.25&quot; x 1.25&quot;)" />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select label type" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="standard">Standard (2.25" x 1.25")</SelectItem>
-                            <SelectItem value="large">Large (3" x 2")</SelectItem>
-                            <SelectItem value="small">Small (1.5" x 1")</SelectItem>
+                            <SelectItem value="standard">Standard</SelectItem>
+                            <SelectItem value="large">Large</SelectItem>
+                            <SelectItem value="small">Small</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="numberOfLabels">Number of Labels</Label>
-                        <Select
-                          value={labelSettings.copies.toString()}
-                          onValueChange={(value) => handleLabelSettingChange("copies", parseInt(value, 10))}
-                        >
-                          <SelectTrigger id="numberOfLabels">
-                            <SelectValue placeholder="1" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[1, 2, 3, 4, 5, 10].map((num) => (
-                              <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Label htmlFor="label-copies">Number of Copies</Label>
+                        <Input
+                          id="label-copies"
+                          type="number"
+                          min="1"
+                          value={labelSettings.copies}
+                          onChange={(e) => handleLabelSettingChange('copies', parseInt(e.target.value) || 1)}
+                        />
                       </div>
 
                       <div className="space-y-3">
-                        <Label>Include on Label</Label>
+                        <Label>Include in Label</Label>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-4">
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="productName" 
+                              <Checkbox
+                                id="include-product-name"
                                 checked={labelSettings.includeProductName}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeProductName", checked === true)
-                                }
+                                onCheckedChange={(checked) => handleLabelSettingChange('includeProductName', checked)}
                               />
-                              <Label htmlFor="productName">Product Name</Label>
+                              <Label htmlFor="include-product-name" className="font-normal">Product Name</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="price" 
+                              <Checkbox
+                                id="include-price"
                                 checked={labelSettings.includePrice}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includePrice", checked === true)
-                                }
+                                onCheckedChange={(checked) => handleLabelSettingChange('includePrice', checked)}
                               />
-                              <Label htmlFor="price">Price</Label>
+                              <Label htmlFor="include-price" className="font-normal">Price</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="barcode" 
+                              <Checkbox
+                                id="include-barcode"
                                 checked={labelSettings.includeBarcode}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeBarcode", checked === true)
-                                }
+                                onCheckedChange={(checked) => handleLabelSettingChange('includeBarcode', checked)}
                               />
-                              <Label htmlFor="barcode">Barcode</Label>
+                              <Label htmlFor="include-barcode" className="font-normal">Barcode</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="date" 
+                              <Checkbox
+                                id="include-date"
                                 checked={labelSettings.includeDate}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeDate", checked === true)
-                                }
+                                onCheckedChange={(checked) => handleLabelSettingChange('includeDate', checked)}
                               />
-                              <Label htmlFor="date">Date</Label>
+                              <Label htmlFor="include-date" className="font-normal">Date</Label>
                             </div>
                           </div>
                           <div className="space-y-4">
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="metal" 
+                              <Checkbox
+                                id="include-metal"
                                 checked={labelSettings.includeMetal}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeMetal", checked === true)
-                                }
+                                onCheckedChange={(checked) => handleLabelSettingChange('includeMetal', checked)}
                               />
-                              <Label htmlFor="metal">Metal</Label>
+                              <Label htmlFor="include-metal" className="font-normal">Metal</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="weight" 
+                              <Checkbox
+                                id="include-weight"
                                 checked={labelSettings.includeWeight}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeWeight", checked === true)
-                                }
+                                onCheckedChange={(checked) => handleLabelSettingChange('includeWeight', checked)}
                               />
-                              <Label htmlFor="weight">Weight</Label>
+                              <Label htmlFor="include-weight" className="font-normal">Weight</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="purity" 
+                              <Checkbox
+                                id="include-purity"
                                 checked={labelSettings.includePurity}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includePurity", checked === true)
-                                }
+                                onCheckedChange={(checked) => handleLabelSettingChange('includePurity', checked)}
                               />
-                              <Label htmlFor="purity">Purity</Label>
+                              <Label htmlFor="include-purity" className="font-normal">Purity</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
-                                id="qrCode" 
+                              <Checkbox
+                                id="include-qr-code"
                                 checked={labelSettings.includeQrCode}
-                                onCheckedChange={(checked) => 
-                                  handleLabelSettingChange("includeQrCode", checked === true)
-                                }
+                                onCheckedChange={(checked) => handleLabelSettingChange('includeQrCode', checked)}
                               />
-                              <Label htmlFor="qrCode">QR Code</Label>
+                              <Label htmlFor="include-qr-code" className="font-normal">QR Code</Label>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
+
+                    {labelSettings.includeQrCode && (
+                      <div className="space-y-2">
+                        <Label htmlFor="qr-error-correction">QR Code Error Correction</Label>
+                        <Select 
+                          value={labelSettings.qrErrorCorrection}
+                          onValueChange={(value) => handleLabelSettingChange('qrErrorCorrection', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select error correction level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="L">Low (L)</SelectItem>
+                            <SelectItem value="M">Medium (M)</SelectItem>
+                            <SelectItem value="Q">Quartile (Q)</SelectItem>
+                            <SelectItem value="H">High (H)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Higher error correction allows the QR code to be readable even if partially damaged, but makes the code more complex.
+                        </p>
+                      </div>
+                    )}
 
                     <Button 
                       className="w-full bg-primary hover:bg-primary/90"
