@@ -494,8 +494,7 @@ export default function CreateInvoicePage() {
 
   // Handle printing
   const handlePrint = useReactToPrint({
-    // @ts-ignore - TypeScript definition seems incomplete
-    content: () => invoiceRef.current,
+    contentRef: invoiceRef,
     documentTitle: `Invoice-${generateInvoiceData().invoiceNumber}`,
   });
 

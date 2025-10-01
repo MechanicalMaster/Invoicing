@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "/Users/ronak/.nvm/versions/node/v23.11.0/bin/npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "sbp_a80f2a71a1ba39d46092a9384d4d53281da7ae76"
+      ]
+    }
+  }
+} 
