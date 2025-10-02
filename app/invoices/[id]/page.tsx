@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { useReactToPrint } from "react-to-print"
@@ -155,42 +155,73 @@ export default function InvoiceDetailPage() {
     }
   }
   
-  // Format invoice data for the preview component
-  const formatInvoiceDataForPreview = (): InvoiceData => {
-    return {
-      invoiceNumber: invoice.invoice_number,
-      date: formatDate(invoice.invoice_date),
-      customerName: invoice.customer_name_snapshot,
-      customerAddress: invoice.customer_address_snapshot,
-      customerPhone: invoice.customer_phone_snapshot,
-      customerEmail: invoice.customer_email_snapshot,
-      firmName: invoice.firm_name_snapshot,
-      firmAddress: invoice.firm_address_snapshot,
-      firmPhone: invoice.firm_phone_snapshot,
-      firmGstin: invoice.firm_gstin_snapshot,
-      items: invoiceItems.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        weight: item.weight,
-        pricePerGram: item.price_per_gram,
-        total: item.total,
-      })),
-      subtotal: invoice.subtotal,
-      gstPercentage: invoice.gst_percentage,
-      gstAmount: invoice.gst_amount,
-      total: invoice.grand_total,
+  // Format invoice data for the preview component - memoized to avoid recalculation
+  // All formatting logic is inside useMemo to ensure stable references and proper dependency tracking
+  const invoiceData = useMemo((): InvoiceData | null => {
+    if (!invoice) return null
+    
+    // Safe date formatter - handles null, undefined, and invalid dates
+    const formatDate = (dateString: any): string => {
+      if (!dateString) return 'N/A'
+      
+      try {
+        const date = new Date(dateString)
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+          return 'N/A'
+        }
+        return date.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        })
+      } catch (error) {
+        console.error('Error formatting date:', error)
+        return 'N/A'
+      }
     }
-  }
-  
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
-  }
+    
+    // Safe number converter with bounds checking
+    const safeNumber = (value: any, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): number => {
+      const num = Number(value)
+      if (isNaN(num) || !isFinite(num) || num < min || num > max) {
+        return 0
+      }
+      return num
+    }
+    
+    try {
+      // Create stable item references by pre-processing
+      const processedItems = invoiceItems.map(item => ({
+        name: String(item.name || ''),
+        quantity: safeNumber(item.quantity, 0, 999999),
+        weight: safeNumber(item.weight, 0, 999999),
+        pricePerGram: safeNumber(item.price_per_gram, 0, 999999),
+        total: safeNumber(item.total, 0, 99999999),
+      }))
+      
+      return {
+        invoiceNumber: String(invoice.invoice_number || 'N/A'),
+        date: formatDate(invoice.invoice_date),
+        customerName: String(invoice.customer_name_snapshot || ''),
+        customerAddress: invoice.customer_address_snapshot ? String(invoice.customer_address_snapshot) : undefined,
+        customerPhone: invoice.customer_phone_snapshot ? String(invoice.customer_phone_snapshot) : undefined,
+        customerEmail: invoice.customer_email_snapshot ? String(invoice.customer_email_snapshot) : undefined,
+        firmName: String(invoice.firm_name_snapshot || ''),
+        firmAddress: String(invoice.firm_address_snapshot || ''),
+        firmPhone: String(invoice.firm_phone_snapshot || ''),
+        firmGstin: String(invoice.firm_gstin_snapshot || ''),
+        items: processedItems,
+        subtotal: safeNumber(invoice.subtotal, 0, 99999999),
+        gstPercentage: safeNumber(invoice.gst_percentage, 0, 100),
+        gstAmount: safeNumber(invoice.gst_amount, 0, 99999999),
+        total: safeNumber(invoice.grand_total, 0, 99999999),
+      }
+    } catch (error) {
+      console.error('Error formatting invoice data:', error)
+      return null
+    }
+  }, [invoice, invoiceItems])
   
   // Handle printing
   const handlePrint = useReactToPrint({
@@ -291,9 +322,9 @@ export default function InvoiceDetailPage() {
           </Button>
         )}
         
-        {isBrowser && (
+        {isBrowser && invoiceData && invoiceItems.length > 0 && (
           <PDFDownloadLinkWrapper
-            invoiceData={formatInvoiceDataForPreview()}
+            invoiceData={invoiceData}
             onStartGeneration={() => setIsGeneratingPDF(true)}
             onFinishGeneration={() => setIsGeneratingPDF(false)}
           />
@@ -301,7 +332,9 @@ export default function InvoiceDetailPage() {
       </div>
       
       <div ref={invoiceRef}>
-        <InvoicePreview invoiceData={formatInvoiceDataForPreview()} />
+        {invoiceData && (
+          <InvoicePreview invoiceData={invoiceData} />
+        )}
       </div>
     </>
   )

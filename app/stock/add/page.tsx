@@ -182,6 +182,11 @@ export default function AddStockItemPage() {
       // Process and upload images
       const uploadedImageUrls: string[] = [];
       
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        throw new Error('No active session')
+      }
+
       const imageUploadPromises = images
         .filter(img => img.file) // Process only images with an actual file
         .map(async (imageState, index) => {
@@ -191,16 +196,28 @@ export default function AddStockItemPage() {
           const fileName = `${Date.now()}_${index}.${fileExt}`; // Or use uuid
           const filePath = `${user.id}/${itemNumber}/${fileName}`;
 
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('stock_item_images')
-            .upload(filePath, compressedFile);
+          // Use secure upload API
+          const formData = new FormData()
+          formData.append('file', compressedFile)
+          formData.append('bucket', 'stock_item_images')
+          formData.append('path', filePath)
 
-          if (uploadError) {
-            console.error('Error uploading image:', uploadError);
-            throw new Error(`Failed to upload image ${fileToProcess.name}: ${uploadError.message}`);
+          const response = await fetch('/api/storage/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || `Failed to upload image ${fileToProcess.name}`)
           }
-          
-          return supabase.storage.from('stock_item_images').getPublicUrl(filePath).data.publicUrl;
+
+          const uploadResult = await response.json()
+          // Return path in URL format for backward compatibility
+          return `stock_item_images/${uploadResult.path}`;
         });
 
       try {
@@ -270,10 +287,10 @@ export default function AddStockItemPage() {
   return (
     <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
+        <div className="flex items-center gap-2 font-heading font-semibold">
           <FileText className="h-6 w-6 text-primary" />
           <span className="text-xl">Sethiya Gold</span>
-        </Link>
+        </div>
         <nav className="ml-auto flex items-center gap-4">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">

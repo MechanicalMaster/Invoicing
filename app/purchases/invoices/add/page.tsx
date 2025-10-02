@@ -125,54 +125,33 @@ export default function AddPurchaseInvoicePage() {
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`
           const filePath = `${user.id}/${fileName}`
           
-          // First, check if the bucket exists
-          const { data: buckets, error: bucketsError } = await supabase.storage
-            .listBuckets()
-          
-          if (bucketsError) {
-            console.error("Error listing buckets:", bucketsError)
-            throw bucketsError
+          // Use secure upload API
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) {
+            throw new Error('No active session')
           }
-          
-          const bucketExists = buckets.some(bucket => bucket.name === 'purchase-invoices')
-          
-          // Create the bucket if it doesn't exist
-          if (!bucketExists) {
-            const { error: createBucketError } = await supabase.storage
-              .createBucket('purchase-invoices', {
-                public: true,
-                fileSizeLimit: 5242880 // 5MB limit
-              })
-            
-            if (createBucketError) {
-              console.error("Error creating bucket:", createBucketError)
-              throw createBucketError
-            }
+
+          const formData = new FormData()
+          formData.append('file', selectedFile)
+          formData.append('bucket', 'purchase-invoices')
+          formData.append('path', filePath)
+
+          const response = await fetch('/api/storage/upload', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Upload failed')
           }
-          
-          // Now upload the file
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('purchase-invoices')
-            .upload(filePath, selectedFile, {
-              cacheControl: '3600',
-              upsert: false
-            })
-          
-          if (uploadError) {
-            console.error("Error uploading file:", uploadError)
-            throw uploadError
-          }
-          
-          if (!uploadData?.path) {
-            throw new Error("Upload failed: No file path returned")
-          }
-          
-          // Get the public URL
-          const { data } = supabase.storage
-            .from('purchase-invoices')
-            .getPublicUrl(filePath)
-            
-          invoice_file_url = data.publicUrl
+
+          const uploadResult = await response.json()
+          // Store the path in a URL format for backward compatibility
+          invoice_file_url = `purchase-invoices/${uploadResult.path}`
         } catch (fileError: any) {
           console.error("File upload error:", fileError)
           throw new Error(`File upload failed: ${fileError.message || 'Unknown error'}`)

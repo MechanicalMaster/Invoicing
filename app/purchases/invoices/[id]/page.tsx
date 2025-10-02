@@ -140,6 +140,24 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: { id: st
     }
   }
 
+  // Helper function to extract storage path from public URL
+  const extractStoragePathFromUrl = (publicUrl: string, bucketName: string): string | null => {
+    try {
+      const url = new URL(publicUrl)
+      const pathParts = url.pathname.split('/')
+      const bucketIndex = pathParts.indexOf(bucketName)
+      
+      if (bucketIndex !== -1 && bucketIndex < pathParts.length - 1) {
+        // Get everything after the bucket name
+        return pathParts.slice(bucketIndex + 1).join('/')
+      }
+      return null
+    } catch (error) {
+      console.error('Error parsing storage URL:', error)
+      return null
+    }
+  }
+
   const handleDeleteInvoice = async () => {
     if (!user || !invoice) return
 
@@ -148,19 +166,17 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: { id: st
       // First, delete file from storage if exists
       if (invoice.invoice_file_url) {
         try {
-          // Extract file path from URL
-          const url = new URL(invoice.invoice_file_url)
-          const pathParts = url.pathname.split('/')
-          const filename = pathParts[pathParts.length - 1]
-          const filePath = `${user.id}/${filename}`
+          const filePath = extractStoragePathFromUrl(invoice.invoice_file_url, 'purchase-invoices')
           
-          const { error: storageError } = await supabase.storage
-            .from('purchase-invoices')
-            .remove([filePath])
-          
-          if (storageError) {
-            console.error("Error deleting file:", storageError)
-            // Continue with invoice deletion even if file deletion fails
+          if (filePath) {
+            const { error: storageError } = await supabase.storage
+              .from('purchase-invoices')
+              .remove([filePath])
+            
+            if (storageError) {
+              console.error("Error deleting file:", storageError)
+              // Continue with invoice deletion even if file deletion fails
+            }
           }
         } catch (fileError) {
           console.error("Error processing file deletion:", fileError)

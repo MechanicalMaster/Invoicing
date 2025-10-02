@@ -1,27 +1,6 @@
-import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer"
+import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import type { InvoiceData } from "@/app/create-invoice/invoice-preview"
 import { TERMS_AND_CONDITIONS, AGREEMENT_TEXT } from "@/lib/invoice-text"
-
-// Register standard PDF fonts
-Font.register({
-  family: 'Helvetica',
-  fonts: [
-    { src: 'Helvetica' },
-    { src: 'Helvetica-Bold', fontWeight: 'bold' },
-    { src: 'Helvetica-Oblique', fontStyle: 'italic' },
-    { src: 'Helvetica-BoldOblique', fontWeight: 'bold', fontStyle: 'italic' },
-  ]
-});
-
-Font.register({
-  family: 'Times',
-  fonts: [
-    { src: 'Times-Roman' },
-    { src: 'Times-Bold', fontWeight: 'bold' },
-    { src: 'Times-Italic', fontStyle: 'italic' },
-    { src: 'Times-BoldItalic', fontWeight: 'bold', fontStyle: 'italic' },
-  ]
-});
 
 const MM_TO_PT = 2.8346;
 
@@ -31,7 +10,6 @@ const styles = StyleSheet.create({
     paddingTop: 10 * MM_TO_PT,
     paddingBottom: 15 * MM_TO_PT,
     paddingHorizontal: 10 * MM_TO_PT,
-    fontFamily: 'Helvetica', // Default font
     fontSize: 10,           // Default font size for body text
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -52,8 +30,6 @@ const styles = StyleSheet.create({
   },
   taxInvoiceTitle: {
     textAlign: 'center',
-    fontFamily: 'Helvetica',
-    fontWeight: 'bold',
     fontSize: 14,
     color: '#B22222', // Firebrick red
     letterSpacing: 1,
@@ -62,8 +38,6 @@ const styles = StyleSheet.create({
   },
   firmNameHeader: {
     textAlign: 'center',
-    fontFamily: 'Times',
-    fontWeight: 'bold',
     fontSize: 28,
     color: '#B22222', // Firebrick red
     textTransform: 'uppercase',
@@ -72,21 +46,18 @@ const styles = StyleSheet.create({
   firmTagline: {
     textAlign: 'center',
     fontSize: 9,
-    fontFamily: 'Helvetica',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 3,
   },
   firmAddressGstinHeader: {
     textAlign: 'center',
-    fontFamily: 'Helvetica',
     fontSize: 8.5,
     lineHeight: 1.3,
     marginBottom: 3,
   },
   telNumberHeader: {
     textAlign: 'right',
-    fontFamily: 'Helvetica',
     fontSize: 9,
     position: 'absolute',
     top: 0,
@@ -95,7 +66,6 @@ const styles = StyleSheet.create({
   invoiceMetaBlock: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    fontFamily: 'Helvetica',
     fontSize: 9.5,
     paddingVertical: 5,
     borderTopWidth: 0.5,
@@ -112,7 +82,6 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 15,
     fontSize: 9.5,
-    fontFamily: 'Helvetica',
   },
   customerInfoRow: {
     flexDirection: 'row',
@@ -120,8 +89,6 @@ const styles = StyleSheet.create({
   },
   customerInfoLabel: {
     width: '18%',
-    fontFamily: 'Helvetica',
-    fontWeight: 'bold',
   },
   customerInfoValue: {
     width: '82%',
@@ -149,8 +116,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     backgroundColor: '#E0E0E0',
     fontSize: 9,
-    fontFamily: 'Helvetica',
-    fontWeight: 'bold',
     textAlign: 'center',
   },
   tableCol: {
@@ -161,7 +126,6 @@ const styles = StyleSheet.create({
     paddingVertical: 3, // Adjusted for 8pt feel
     paddingHorizontal: 5,
     fontSize: 9,
-    fontFamily: 'Helvetica',
   },
   colItem: { width: '35%' },
   colQty: { width: '10%', textAlign: 'center' },
@@ -180,7 +144,6 @@ const styles = StyleSheet.create({
   summaryTable: {
     width: '50%',
     fontSize: 9.5,
-    fontFamily: 'Helvetica',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -204,16 +167,12 @@ const styles = StyleSheet.create({
     borderColor: '#000000',
     marginTop: 3,
   },
-  grandTotalLabel: { 
-    fontSize: 11, 
-    fontFamily: 'Helvetica', 
-    fontWeight: 'bold'
+  grandTotalLabel: {
+    fontSize: 11,
   },
-  grandTotalValue: { 
-    fontSize: 11, 
-    textAlign: 'right', 
-    fontFamily: 'Helvetica',
-    fontWeight: 'bold'
+  grandTotalValue: {
+    fontSize: 11,
+    textAlign: 'right',
   },
 
   // Footer Styles
@@ -225,7 +184,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#555555',
     padding: 8,
-    fontFamily: 'Helvetica',
   },
   footerDottedLine: {
     borderTopWidth: 1,
@@ -236,14 +194,10 @@ const styles = StyleSheet.create({
   footerThankYou: {
     textAlign: 'center',
     fontSize: 10,
-    fontFamily: 'Helvetica',
-    fontWeight: 'bold',
     marginBottom: 5,
   },
   footerTermsTitle: {
     fontSize: 9,
-    fontFamily: 'Helvetica',
-    fontWeight: 'bold',
     textDecoration: 'underline',
     marginBottom: 3,
   },
@@ -277,7 +231,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     fontSize: 8,
-    fontFamily: 'Helvetica',
     fontStyle: 'italic',
     marginTop: 8,
   },
@@ -287,10 +240,113 @@ interface InvoicePDFProps {
   invoice: InvoiceData;
 }
 
+// Helper function to safely format numbers with comprehensive validation
+const safeNumber = (value: any, decimals: number = 2): string => {
+  // Validate decimals parameter
+  const validDecimals = Math.max(0, Math.min(20, Math.floor(decimals)))
+  
+  // Convert to number
+  const num = Number(value)
+  
+  // Check for invalid numbers
+  if (isNaN(num) || !isFinite(num)) {
+    return '0.' + '0'.repeat(validDecimals)
+  }
+  
+  // Check for numbers that are too large or too small for safe formatting
+  // toFixed() has issues with numbers outside this range
+  const MAX_SAFE_VALUE = 1e20
+  const MIN_SAFE_VALUE = -1e20
+  
+  if (num > MAX_SAFE_VALUE || num < MIN_SAFE_VALUE) {
+    return '0.' + '0'.repeat(validDecimals)
+  }
+  
+  try {
+    return num.toFixed(validDecimals)
+  } catch (error) {
+    console.error('Error in safeNumber formatting:', error)
+    return '0.' + '0'.repeat(validDecimals)
+  }
+}
+
+// Helper function to safely get numeric value with bounds checking
+const safeNumericValue = (value: any): number => {
+  const num = Number(value)
+  
+  // Check for invalid numbers
+  if (isNaN(num) || !isFinite(num)) {
+    return 0
+  }
+  
+  // Clamp to safe integer range to prevent overflow
+  const MAX_SAFE = Number.MAX_SAFE_INTEGER
+  const MIN_SAFE = Number.MIN_SAFE_INTEGER
+  
+  if (num > MAX_SAFE) return MAX_SAFE
+  if (num < MIN_SAFE) return MIN_SAFE
+  
+  return num
+}
+
+// Helper function to safely get string value
+const safeString = (value: any): string => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value);
+};
+
+// Helper function for safe multiplication to prevent overflow
+const safeMultiply = (a: any, b: any): number => {
+  const num1 = safeNumericValue(a);
+  const num2 = safeNumericValue(b);
+  
+  // Check if multiplication would overflow
+  if (num1 !== 0 && Math.abs(num2) > Number.MAX_SAFE_INTEGER / Math.abs(num1)) {
+    console.warn('Multiplication would overflow, returning 0');
+    return 0;
+  }
+  
+  const result = num1 * num2;
+  
+  // Final safety check
+  if (!isFinite(result)) {
+    return 0;
+  }
+  
+  return result;
+};
+
 // Create Document Component
 export function InvoicePDF({ invoice }: InvoicePDFProps) {
+  // Validate and sanitize invoice data
+  const sanitizedInvoice = {
+    invoiceNumber: safeString(invoice.invoiceNumber),
+    date: safeString(invoice.date),
+    customerName: safeString(invoice.customerName),
+    customerAddress: invoice.customerAddress ? safeString(invoice.customerAddress) : undefined,
+    customerPhone: invoice.customerPhone ? safeString(invoice.customerPhone) : undefined,
+    customerEmail: invoice.customerEmail ? safeString(invoice.customerEmail) : undefined,
+    firmName: safeString(invoice.firmName),
+    firmAddress: safeString(invoice.firmAddress),
+    firmPhone: safeString(invoice.firmPhone),
+    firmGstin: safeString(invoice.firmGstin),
+    subtotal: safeNumericValue(invoice.subtotal),
+    gstPercentage: safeNumericValue(invoice.gstPercentage),
+    gstAmount: safeNumericValue(invoice.gstAmount),
+    total: safeNumericValue(invoice.total),
+    items: invoice.items.map(item => ({
+      name: safeString(item.name),
+      quantity: safeNumericValue(item.quantity),
+      weight: safeNumericValue(item.weight),
+      pricePerGram: safeNumericValue(item.pricePerGram),
+      total: safeNumericValue(item.total),
+    })),
+  };
+
   return (
-    <Document author={invoice.firmName} title={`Invoice ${invoice.invoiceNumber}`}>
+    <Document author={sanitizedInvoice.firmName} title={`Invoice ${sanitizedInvoice.invoiceNumber}`}>
       <Page size="A4" style={styles.page}>
         {/* --- HEADER SECTION --- */}
         <View style={styles.headerSection}>
@@ -298,19 +354,19 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
           <Text style={styles.taxInvoiceTitle}>TAX INVOICE</Text>
 
-          <Text style={styles.firmNameHeader}>{invoice.firmName}</Text>
+          <Text style={styles.firmNameHeader}>{sanitizedInvoice.firmName}</Text>
           <Text style={styles.firmTagline}>Premium Jewelry</Text>
           <Text style={styles.firmAddressGstinHeader}>
-            {invoice.firmAddress}
+            {sanitizedInvoice.firmAddress}
           </Text>
           <Text style={styles.firmAddressGstinHeader}>
-            GSTIN: {invoice.firmGstin} | HSN: 7113
+            GSTIN: {sanitizedInvoice.firmGstin} | HSN: 7113
           </Text>
-          <Text style={styles.telNumberHeader}>Tel.: {invoice.firmPhone}</Text>
+          <Text style={styles.telNumberHeader}>Tel.: {sanitizedInvoice.firmPhone}</Text>
 
           <View style={styles.invoiceMetaBlock}>
-            <Text>Bill No.: {invoice.invoiceNumber}</Text>
-            <Text>Date: {invoice.date}</Text>
+            <Text>Bill No.: {sanitizedInvoice.invoiceNumber}</Text>
+            <Text>Date: {sanitizedInvoice.date}</Text>
           </View>
         </View>
 
@@ -318,24 +374,24 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
         <View style={styles.customerInfoContainer}>
           <View style={styles.customerInfoRow}>
             <Text style={styles.customerInfoLabel}>M/s.</Text>
-            <Text style={styles.customerInfoValue}>{invoice.customerName}</Text>
+            <Text style={styles.customerInfoValue}>{sanitizedInvoice.customerName}</Text>
           </View>
-          {invoice.customerAddress && (
+          {sanitizedInvoice.customerAddress && (
             <View style={styles.customerInfoRow}>
               <Text style={styles.customerInfoLabel}>Address:</Text>
-              <Text style={styles.customerInfoValue}>{invoice.customerAddress}</Text>
+              <Text style={styles.customerInfoValue}>{sanitizedInvoice.customerAddress}</Text>
             </View>
           )}
-          {invoice.customerPhone && (
+          {sanitizedInvoice.customerPhone && (
             <View style={styles.customerInfoRow}>
               <Text style={styles.customerInfoLabel}>Phone:</Text>
-              <Text style={styles.customerInfoValue}>{invoice.customerPhone}</Text>
+              <Text style={styles.customerInfoValue}>{sanitizedInvoice.customerPhone}</Text>
             </View>
           )}
-          {invoice.customerEmail && (
+          {sanitizedInvoice.customerEmail && (
             <View style={styles.customerInfoRow}>
               <Text style={styles.customerInfoLabel}>Email:</Text>
-              <Text style={styles.customerInfoValue}>{invoice.customerEmail}</Text>
+              <Text style={styles.customerInfoValue}>{sanitizedInvoice.customerEmail}</Text>
             </View>
           )}
         </View>
@@ -350,13 +406,13 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             <Text style={[styles.tableColHeader, styles.colAmount]}>Amount (₹)</Text>
           </View>
 
-          {invoice.items.map((item, index) => (
+          {sanitizedInvoice.items.map((item, index) => (
             <View key={index} style={[styles.tableRow, index % 2 === 0 ? styles.tableRowLight : styles.tableRowDark]}>
               <Text style={[styles.tableCol, styles.colItem]}>{item.name}</Text>
               <Text style={[styles.tableCol, styles.colQty]}>{item.quantity}</Text>
-              <Text style={[styles.tableCol, styles.colWeight]}>{item.weight.toFixed(3)}</Text>
-              <Text style={[styles.tableCol, styles.colPricePerGram]}>₹{(item.pricePerGram * 10).toFixed(2)}</Text>
-              <Text style={[styles.tableCol, styles.colAmount]}>₹{item.total.toFixed(2)}</Text>
+              <Text style={[styles.tableCol, styles.colWeight]}>{safeNumber(item.weight, 3)}</Text>
+              <Text style={[styles.tableCol, styles.colPricePerGram]}>₹{safeNumber(safeMultiply(item.pricePerGram, 10), 2)}</Text>
+              <Text style={[styles.tableCol, styles.colAmount]}>₹{safeNumber(item.total, 2)}</Text>
             </View>
           ))}
         </View>
@@ -366,15 +422,15 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
           <View style={styles.summaryTable}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal (Items Value):</Text>
-              <Text style={styles.summaryValue}>₹{invoice.subtotal.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>₹{safeNumber(sanitizedInvoice.subtotal, 2)}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>GST ({invoice.gstPercentage}%):</Text>
-              <Text style={styles.summaryValue}>₹{invoice.gstAmount.toFixed(2)}</Text>
+              <Text style={styles.summaryLabel}>GST ({safeNumber(sanitizedInvoice.gstPercentage, 0)}%):</Text>
+              <Text style={styles.summaryValue}>₹{safeNumber(sanitizedInvoice.gstAmount, 2)}</Text>
             </View>
             <View style={styles.grandTotalRow}>
               <Text style={styles.grandTotalLabel}>GRAND TOTAL:</Text>
-              <Text style={styles.grandTotalValue}>₹{invoice.total.toFixed(2)}</Text>
+              <Text style={styles.grandTotalValue}>₹{safeNumber(sanitizedInvoice.total, 2)}</Text>
             </View>
           </View>
         </View>
@@ -396,10 +452,10 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             <View style={styles.footerSignatureBox}>
               <Text>Customer Signature:</Text>
               <View style={styles.signatureLine} />
-              <Text>({invoice.customerName})</Text>
+              <Text>({sanitizedInvoice.customerName})</Text>
             </View>
             <View style={[styles.footerSignatureBox, { textAlign: 'right' }]}>
-              <Text>For {invoice.firmName}:</Text>
+              <Text>For {sanitizedInvoice.firmName}:</Text>
               <View style={styles.signatureLine} />
               <Text>(Authorised Signatory)</Text>
             </View>

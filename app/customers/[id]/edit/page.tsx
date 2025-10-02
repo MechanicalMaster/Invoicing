@@ -197,15 +197,30 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
         throw new Error("Identity reference is required when 'Others' is selected")
       }
 
+      // Helper function to extract storage path from public URL
+      const extractStoragePathFromUrl = (publicUrl: string, bucketName: string): string | null => {
+        try {
+          const url = new URL(publicUrl)
+          const pathParts = url.pathname.split('/')
+          const bucketIndex = pathParts.indexOf(bucketName)
+          
+          if (bucketIndex !== -1 && bucketIndex < pathParts.length - 1) {
+            // Get everything after the bucket name
+            return pathParts.slice(bucketIndex + 1).join('/')
+          }
+          return null
+        } catch (error) {
+          console.error('Error parsing storage URL:', error)
+          return null
+        }
+      }
+
       // Upload file to Supabase Storage if a new file is provided
       let identityDocPath = existingDocPath
       if (documentFile && formData.identityType !== "none") {
         // Delete existing file if there is one
         if (existingDocPath) {
-          // Extract the path from the URL
-          const urlParts = existingDocPath.split('/');
-          const filePathParts = urlParts.slice(urlParts.indexOf('identity_docs') + 1);
-          const existingFilePath = filePathParts.join('/');
+          const existingFilePath = extractStoragePathFromUrl(existingDocPath, 'identity_docs')
           
           if (existingFilePath) {
             await supabase.storage
@@ -214,25 +229,37 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
           }
         }
         
-        // Upload new file
+        // Upload new file using secure API
         const fileExt = documentFile.name.split('.').pop()
         const fileName = `${uuidv4()}.${fileExt}`
         const filePath = `${user.id}/${fileName}`
         
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('identity_docs')
-          .upload(filePath, documentFile)
-          
-        if (uploadError) {
-          throw new Error(`Error uploading document: ${uploadError.message}`)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          throw new Error('No active session')
         }
-        
-        // Get public URL for the uploaded file
-        const { data: urlData } = supabase.storage
-          .from('identity_docs')
-          .getPublicUrl(filePath)
-          
-        identityDocPath = urlData.publicUrl
+
+        const formDataUpload = new FormData()
+        formDataUpload.append('file', documentFile)
+        formDataUpload.append('bucket', 'identity_docs')
+        formDataUpload.append('path', filePath)
+
+        const response = await fetch('/api/storage/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: formDataUpload,
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Upload failed')
+        }
+
+        const uploadResult = await response.json()
+        // Store the path in a URL format for backward compatibility
+        identityDocPath = `identity_docs/${uploadResult.path}`
       }
       
       // If identity type is "none", set document path to null
@@ -241,9 +268,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
         
         // Delete existing file if there is one
         if (existingDocPath) {
-          const urlParts = existingDocPath.split('/');
-          const filePathParts = urlParts.slice(urlParts.indexOf('identity_docs') + 1);
-          const existingFilePath = filePathParts.join('/');
+          const existingFilePath = extractStoragePathFromUrl(existingDocPath, 'identity_docs')
           
           if (existingFilePath) {
             await supabase.storage
@@ -298,10 +323,10 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
     return (
       <div className="flex min-h-screen w-full flex-col">
         <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center gap-2 font-heading font-semibold">
             <FileText className="h-6 w-6 text-primary" />
-            <span className="text-xl">Ratna Invoicing</span>
-          </Link>
+            <span className="text-xl">Sethiya Gold</span>
+          </div>
         </header>
         <main className="flex flex-1 items-center justify-center">
           <div className="text-center">

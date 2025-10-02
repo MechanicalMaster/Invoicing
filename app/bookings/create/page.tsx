@@ -57,8 +57,8 @@ export default function CreateBookingPage() {
   }
 
   const handleItemChange = (id: number, field: string, value: string) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => {
+    setItems((prevItems) => {
+      const updatedItems = prevItems.map((item) => {
         if (item.id === id) {
           return {
             ...item,
@@ -66,20 +66,20 @@ export default function CreateBookingPage() {
           }
         }
         return item
-      }),
-    )
+      })
 
-    // Update total estimated amount
-    if (field === "estimatedPrice") {
-      const totalEstimated = items
-        .map((item) => (item.id === id ? Number.parseFloat(value) || 0 : item.estimatedPrice))
-        .reduce((sum, price) => sum + price, 0)
+      // Update total estimated amount using the updated items
+      if (field === "estimatedPrice") {
+        const totalEstimated = updatedItems.reduce((sum, item) => sum + item.estimatedPrice, 0)
 
-      setFormData((prev) => ({
-        ...prev,
-        estimatedAmount: totalEstimated,
-      }))
-    }
+        setFormData((prev) => ({
+          ...prev,
+          estimatedAmount: totalEstimated,
+        }))
+      }
+
+      return updatedItems
+    })
   }
 
   const addItem = () => {
@@ -104,11 +104,12 @@ export default function CreateBookingPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate form
-    if (!formData.customerName || !formData.customerPhone || items[0].name === "") {
+    // Validate form - check all items, not just the first one
+    const hasEmptyItemNames = items.some(item => !item.name.trim())
+    if (!formData.customerName || !formData.customerPhone || hasEmptyItemNames) {
       toast({
         title: "Missing required fields",
-        description: "Please fill in all required fields.",
+        description: "Please fill in all required fields including all item names.",
         variant: "destructive",
       })
       return
@@ -145,10 +146,10 @@ export default function CreateBookingPage() {
   return (
     <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
+        <div className="flex items-center gap-2 font-heading font-semibold">
           <FileText className="h-6 w-6 text-primary" />
           <span className="text-xl">Sethiya Gold</span>
-        </Link>
+        </div>
         <nav className="ml-auto flex items-center gap-4">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">

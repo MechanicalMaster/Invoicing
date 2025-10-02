@@ -31,6 +31,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const { data, error } = await supabase
       .from('notifications')
       .select('*')
+      .eq('user_id', user.user.id)
       .order('created_at', { ascending: false })
     
     if (error) {
@@ -43,10 +44,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }
   
   const markAsRead = async (id: string) => {
+    const { data: user } = await supabase.auth.getUser()
+    if (!user.user) return
+    
     const { error } = await supabase
       .from('notifications')
       .update({ read_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('user_id', user.user.id)
     
     if (error) {
       console.error('Error marking notification as read:', error)
@@ -57,6 +62,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }
   
   const markAllAsRead = async () => {
+    const { data: user } = await supabase.auth.getUser()
+    if (!user.user) return
+    
     const unreadIds = notifications.filter(n => !n.read_at).map(n => n.id)
     if (unreadIds.length === 0) return
     
@@ -64,6 +72,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       .from('notifications')
       .update({ read_at: new Date().toISOString() })
       .in('id', unreadIds)
+      .eq('user_id', user.user.id)
     
     if (error) {
       console.error('Error marking all notifications as read:', error)
@@ -75,23 +84,28 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   
   // Setup real-time subscription for new notifications
   useEffect(() => {
-    fetchNotifications()
+    let channel: any = null
     
-    const channel = supabase
-      .channel('notifications-channel')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications'
-        },
-        async (payload) => {
-          const newNotification = payload.new as Notification
-          
-          // Only show toast for this user's notifications
-          const { data: user } = await supabase.auth.getUser()
-          if (user.user?.id === newNotification.user_id) {
+    const setupSubscription = async () => {
+      await fetchNotifications()
+      
+      const { data: user } = await supabase.auth.getUser()
+      if (!user.user) return
+      
+      // Subscribe only to notifications for the current user
+      channel = supabase
+        .channel(`notifications-channel-${user.user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.user.id}`
+          },
+          async (payload) => {
+            const newNotification = payload.new as Notification
+            
             // Show toast notification
             toast(newNotification.title, {
               description: newNotification.message,
@@ -106,12 +120,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             // Refresh notifications list
             await fetchNotifications()
           }
-        }
-      )
-      .subscribe()
+        )
+        .subscribe()
+    }
+    
+    setupSubscription()
     
     return () => {
-      supabase.removeChannel(channel)
+      if (channel) {
+        supabase.removeChannel(channel)
+      }
     }
   }, [])
   
