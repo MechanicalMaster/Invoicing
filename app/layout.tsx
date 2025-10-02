@@ -4,7 +4,10 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import { NotificationProvider } from '@/lib/providers/notification-provider'
+import { ChatProvider } from '@/lib/contexts/chat-context'
 import { Toaster } from "@/components/ui/toaster"
+import { ChatFloatingButton } from '@/components/ai-chat/chat-floating-button'
+import { ChatPanel } from '@/components/ai-chat/chat-panel'
 import { cn } from "@/lib/utils"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -26,8 +29,12 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <NotificationProvider>
-              {children}
-              <Toaster />
+              <ChatProvider>
+                {children}
+                <ChatFloatingButton />
+                <ChatPanel />
+                <Toaster />
+              </ChatProvider>
             </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>
