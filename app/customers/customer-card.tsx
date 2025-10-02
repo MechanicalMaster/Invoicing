@@ -17,9 +17,9 @@ interface CustomerTransaction {
 interface Customer {
   id: string
   name: string
-  phone: string
-  email: string
-  address: string
+  phone?: string | null
+  email?: string | null
+  address?: string | null
   identityType: string
   identityNumber: string
   referredBy?: string
@@ -65,18 +65,24 @@ export function CustomerCard({ customer }: CustomerCardProps) {
       </CardHeader>
       <CardContent className="pb-2">
         <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-primary" />
-            <span>{customer.phone}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-primary" />
-            <span>{customer.email}</span>
-          </div>
-          <div className="flex items-start gap-2">
-            <MapPin className="h-4 w-4 text-primary" />
-            <span className="line-clamp-1">{customer.address}</span>
-          </div>
+          {customer.phone && (
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" />
+              <span>{customer.phone}</span>
+            </div>
+          )}
+          {customer.email && (
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" />
+              <span>{customer.email}</span>
+            </div>
+          )}
+          {customer.address && (
+            <div className="flex items-start gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span className="line-clamp-1">{customer.address}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-primary" />
             <span>

@@ -31,7 +31,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 export default function EditStockItemPage() {
   // Use useParams hook instead of accessing params directly
   const params = useParams()
-  const itemId = params.id as string
+  const itemId = params.id
+  if (!itemId || typeof itemId !== 'string') {
+    throw new Error('Invalid item ID')
+  }
   
   const router = useRouter()
   const { user } = useAuth()
@@ -76,10 +79,14 @@ export default function EditStockItemPage() {
       setIsLoading(true)
       setError(null)
 
+      if (!user?.id) {
+        throw new Error('User ID is required')
+      }
+
       const { data, error } = await supabase
         .from('stock_items')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('item_number', itemId)
         .single()
 

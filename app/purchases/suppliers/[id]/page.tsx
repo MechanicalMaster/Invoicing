@@ -109,7 +109,7 @@ export default function SupplierDetailPage({ params }: { params: Promise<{ id: s
   }
 
   const handleDeleteSupplier = async () => {
-    if (!user) return
+    if (!user || !supplierId) return
 
     setIsDeleting(true)
     try {

@@ -126,6 +126,10 @@ export default function EditSupplierPage({ params }: { params: Promise<{ id: str
     setIsSubmitting(true)
 
     try {
+      if (!supplierId) {
+        throw new Error('Supplier ID is required')
+      }
+
       const { data, error } = await supabase
         .from("suppliers")
         .update({

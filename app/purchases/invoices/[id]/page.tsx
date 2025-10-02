@@ -40,7 +40,13 @@ import supabase from "@/lib/supabase"
 import { Tables } from "@/lib/database.types"
 
 type PurchaseInvoice = Tables<"purchase_invoices"> & {
-  suppliers?: Tables<"suppliers"> | null
+  suppliers?: {
+    id: string
+    name: string
+    contact_person: string | null
+    phone: string | null
+    email: string | null
+  } | null
 }
 
 export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -192,6 +198,10 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<
       }
 
       // Delete invoice
+      if (!invoiceId) {
+        throw new Error('Invoice ID is required')
+      }
+
       const { error } = await supabase
         .from("purchase_invoices")
         .delete()

@@ -19,7 +19,7 @@ export type Tables = Database['public']['Tables']
 // For convenience, you can add specific table types here
 export type InvoiceType = Tables['invoices']['Row']
 export type CustomerType = Tables['customers']['Row']
-export type ProductType = Tables['products']['Row']
+// export type ProductType = Tables['products']['Row'] // Products table doesn't exist
 
 // Helper type for form input
 export type FormData<T> = {

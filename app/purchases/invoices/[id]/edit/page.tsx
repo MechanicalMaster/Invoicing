@@ -286,8 +286,8 @@ export default function EditPurchaseInvoicePage({ params }: { params: Promise<{ 
           })
 
           if (!response.ok) {
-            const error = await response.json()
-            throw new Error(error.error || 'Upload failed')
+            const errorResponse = await response.json()
+            throw new Error(errorResponse.error || 'Upload failed')
           }
 
           const uploadResult = await response.json()
@@ -300,12 +300,16 @@ export default function EditPurchaseInvoicePage({ params }: { params: Promise<{ 
       }
 
       // Update purchase invoice
-      const { data, error } = await supabase
-        .from("purchase_invoices")
+      if (!invoiceId) {
+        throw new Error('Invoice ID is required')
+      }
+
+      const { error } = await supabase
+        .from('purchase_invoices')
         .update({
           purchase_number: formData.purchase_number,
           invoice_number: formData.invoice_number,
-          invoice_date: formData.invoice_date.toISOString().split('T')[0],
+          invoice_date: formData.invoice_date instanceof Date ? formData.invoice_date.toISOString().split('T')[0] : formData.invoice_date,
           supplier_id: formData.supplier_id === "_none" ? null : formData.supplier_id,
           amount: parseFloat(formData.amount),
           status: formData.status,

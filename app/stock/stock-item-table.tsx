@@ -39,11 +39,18 @@ interface StockItem {
   name: string
   category: string
   material: string
+  purity: string
   weight: number
+  makingCharges: number
+  price: number
   purchasePrice: number
-  supplier?: string
-  is_sold?: boolean
-  sold_at?: string | null
+  stock: number
+  images: string[]
+  description: string
+  dateAdded: Date
+  is_sold: boolean
+  sold_at: string | null
+  supplier: string | null
 }
 
 interface StockItemTableProps {

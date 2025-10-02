@@ -72,6 +72,10 @@ export default function EditInvoicePage() {
       setIsLoading(true)
       
       // Fetch invoice
+      if (!params.id) {
+        throw new Error('Invoice ID is required')
+      }
+
       const { data: invoiceData, error: invoiceError } = await supabase
         .from('invoices')
         .select('*')

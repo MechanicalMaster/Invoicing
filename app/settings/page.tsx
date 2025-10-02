@@ -36,7 +36,7 @@ export default function SettingsPage() {
     push: false,
     sms: true,
     whatsapp: false,
-    frequency: "instant",
+    frequency: "instant" as "instant" | "daily" | "weekly",
     quietHoursStart: "22:00",
     quietHoursEnd: "07:00"
   });
@@ -48,7 +48,7 @@ export default function SettingsPage() {
   });
   
   const [labelSettings, setLabelSettings] = useState({
-    type: "standard",
+    type: "standard" as "standard" | "large" | "small",
     copies: 1,
     includeProductName: true,
     includePrice: true,
@@ -58,11 +58,11 @@ export default function SettingsPage() {
     includeWeight: true,
     includePurity: true,
     includeQrCode: true,
-    qrErrorCorrection: "M"
+    qrErrorCorrection: "M" as "L" | "M" | "Q" | "H"
   });
   
   const [photoSettings, setPhotoSettings] = useState({
-    compressionLevel: "medium"
+    compressionLevel: "medium" as "low" | "medium" | "high" | "none"
   });
   
   const [backupFileName, setBackupFileName] = useState("");
@@ -215,7 +215,7 @@ export default function SettingsPage() {
         notifications_push_enabled: notificationSettings.push,
         notifications_sms_enabled: notificationSettings.sms,
         notifications_whatsapp_enabled: notificationSettings.whatsapp,
-        notifications_frequency: notificationSettings.frequency,
+        notifications_frequency: notificationSettings.frequency as "instant" | "daily" | "weekly",
         notifications_quiet_hours_start: notificationSettings.quietHoursStart,
         notifications_quiet_hours_end: notificationSettings.quietHoursEnd,
         // Invoice Settings
@@ -223,7 +223,7 @@ export default function SettingsPage() {
         invoice_next_number: invoiceSettings.nextNumber,
         invoice_default_notes: invoiceSettings.defaultNotes,
         // Label Settings
-        label_type: labelSettings.type,
+        label_type: labelSettings.type as "standard" | "large" | "small",
         label_copies: labelSettings.copies,
         label_include_product_name: labelSettings.includeProductName,
         label_include_price: labelSettings.includePrice,
@@ -233,9 +233,9 @@ export default function SettingsPage() {
         label_include_weight: labelSettings.includeWeight,
         label_include_purity: labelSettings.includePurity,
         label_include_qr_code: labelSettings.includeQrCode,
-        label_qr_error_correction: labelSettings.qrErrorCorrection,
+        label_qr_error_correction: labelSettings.qrErrorCorrection as "L" | "M" | "Q" | "H",
         // Photo Settings
-        photo_compression_level: photoSettings.compressionLevel,
+        photo_compression_level: photoSettings.compressionLevel as "low" | "medium" | "high" | "none",
       };
       
       // Save settings to Supabase

@@ -34,7 +34,10 @@ type LabelSettings = {
 
 export default function StockItemDetailPage() {
   const params = useParams()
-  const itemId = params.id as string
+  const itemId = params.id
+  if (!itemId || typeof itemId !== 'string') {
+    throw new Error('Invalid item ID')
+  }
   
   const router = useRouter()
   const { user } = useAuth()
@@ -73,10 +76,14 @@ export default function StockItemDetailPage() {
       setIsLoading(true)
       setError(null)
 
+      if (!user?.id) {
+        throw new Error('User ID is required')
+      }
+
       const { data, error } = await supabase
         .from('stock_items')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('item_number', itemId)
         .single()
 

@@ -38,12 +38,22 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
   const { user } = useAuth();
   const router = useRouter()
   const [customerId, setCustomerId] = useState<string | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    phone: string
+    email: string
+    address: string
+    identityType: "pan_card" | "aadhaar_card" | "others" | "none"
+    identityReference: string
+    referredBy: string
+    referralNotes: string
+    notes: string
+  }>({
     name: "",
     phone: "",
     email: "",
     address: "",
-    identityType: "pan_card" as "pan_card" | "aadhaar_card" | "others" | "none",
+    identityType: "pan_card",
     identityReference: "",
     referredBy: "",
     referralNotes: "",
@@ -54,6 +64,11 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
   const [existingDocPath, setExistingDocPath] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Helper function to check if identity type requires document
+  const requiresDocument = (identityType: "pan_card" | "aadhaar_card" | "others" | "none") => {
+    return identityType !== "none"
+  }
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Unwrap params
@@ -93,7 +108,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
           phone: data.phone || "",
           email: data.email || "",
           address: data.address || "",
-          identityType: data.identity_type,
+          identityType: (data.identity_type as "none" | "pan_card" | "aadhaar_card" | "others") || "none",
           identityReference: data.identity_reference || "",
           referredBy: data.referred_by || "",
           referralNotes: data.referral_notes || "",
@@ -223,7 +238,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
 
       // Upload file to Supabase Storage if a new file is provided
       let identityDocPath = existingDocPath
-      if (documentFile && formData.identityType !== "none") {
+      if (documentFile && requiresDocument(formData.identityType)) {
         // Delete existing file if there is one
         if (existingDocPath) {
           const existingFilePath = extractStoragePathFromUrl(existingDocPath, 'identity_docs')
@@ -269,7 +284,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
       }
       
       // If identity type is "none", set document path to null
-      if (formData.identityType === "none") {
+      if (!requiresDocument(formData.identityType)) {
         identityDocPath = null;
         
         // Delete existing file if there is one
@@ -285,6 +300,10 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
       }
 
       // Update customer data in Supabase
+      if (!customerId) {
+        throw new Error('Customer ID is required')
+      }
+
       const { data, error } = await supabase
         .from('customers')
         .update({
@@ -468,7 +487,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
                   </RadioGroup>
                 </div>
 
-                {formData.identityType !== "none" && (
+                {requiresDocument(formData.identityType) && (
                   <>
                     {formData.identityType === "others" && (
                       <div className="space-y-2">
@@ -487,7 +506,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
                     )}
 
                     <div className="space-y-2">
-                      <Label>Identity Document {formData.identityType !== "none" && <span className="text-destructive">*</span>}</Label>
+                      <Label>Identity Document {requiresDocument(formData.identityType) && <span className="text-destructive">*</span>}</Label>
                       <div className="mt-1 flex items-center justify-center rounded-md border-2 border-dashed border-muted p-6">
                         {documentPreview ? (
                           <div className="relative">
@@ -532,7 +551,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
                                   accept="image/png,image/jpeg,application/pdf"
                                   onChange={handleFileChange}
                                   ref={fileInputRef}
-                                  required={formData.identityType !== "none" && !documentPreview}
+                                  required={requiresDocument(formData.identityType)}
                                 />
                               </label>
                               <p className="pl-1">or drag and drop</p>

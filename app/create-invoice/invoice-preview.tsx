@@ -17,9 +17,9 @@ export interface InvoiceData {
   invoiceNumber: string
   date: string
   customerName: string
-  customerAddress?: string
-  customerPhone?: string
-  customerEmail?: string
+  customerAddress?: string | null
+  customerPhone?: string | null
+  customerEmail?: string | null
   firmName: string
   firmAddress: string
   firmPhone: string

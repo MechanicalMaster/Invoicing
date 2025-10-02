@@ -75,14 +75,14 @@ const exampleTransactions = [
 
 interface Customer {
   id: string
-  created_at: string
+  created_at: string | null
   name: string
   email: string | null
   phone: string | null
   address: string | null
   notes: string | null
   user_id: string
-  identity_type: 'pan_card' | 'aadhaar_card' | 'others' | 'none'
+  identity_type: 'pan_card' | 'aadhaar_card' | 'others' | 'none' | null
   identity_reference: string | null
   identity_doc: string | null
   referred_by?: string | null
@@ -138,7 +138,21 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
           return;
         }
 
-        setCustomer(data);
+        setCustomer({
+          id: data.id,
+          created_at: data.created_at,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          address: data.address,
+          notes: data.notes,
+          user_id: data.user_id,
+          identity_type: data.identity_type as 'pan_card' | 'aadhaar_card' | 'others' | 'none' | null,
+          identity_reference: data.identity_reference,
+          identity_doc: data.identity_doc,
+          referred_by: data.referred_by,
+          referral_notes: data.referral_notes,
+        });
         setIsLoading(false);
       } catch (error: any) {
         toast({
@@ -223,7 +237,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
     return null;
   }
 
-  const createdAt = new Date(customer.created_at);
+  const createdAt = customer.created_at ? new Date(customer.created_at) : new Date();
   
   return (
     <div className="flex min-h-screen w-full flex-col">

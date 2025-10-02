@@ -36,12 +36,13 @@ type StockItem = {
   weight: number
   makingCharges: number
   price: number
+  purchasePrice: number
   stock: number
   images: string[]
   description: string
   dateAdded: Date
   is_sold: boolean
-  sold_at: Date | null
+  sold_at: string | null
   supplier: string | null
 }
 
