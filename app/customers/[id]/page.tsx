@@ -89,9 +89,10 @@ interface Customer {
   referral_notes?: string | null
 }
 
-export default function CustomerDetailPage({ params }: { params: { id: string } }) {
+export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth();
   const router = useRouter();
+  const [customerId, setCustomerId] = useState<string | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -105,16 +106,21 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
       .toUpperCase()
   }
 
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setCustomerId(p.id));
+  }, [params]);
+
   // Fetch customer data
   useEffect(() => {
     const fetchCustomer = async () => {
-      if (!user) return;
+      if (!user || !customerId) return;
 
       try {
         const { data, error } = await supabase
           .from('customers')
           .select('*')
-          .eq('id', params.id)
+          .eq('id', customerId)
           .eq('user_id', user.id)
           .single();
 
@@ -145,7 +151,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
     };
 
     fetchCustomer();
-  }, [params.id, user, router]);
+  }, [customerId, user, router]);
 
   const handleDeleteCustomer = async () => {
     if (!user || !customer) return;

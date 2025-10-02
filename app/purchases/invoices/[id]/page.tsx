@@ -43,13 +43,19 @@ type PurchaseInvoice = Tables<"purchase_invoices"> & {
   suppliers?: Tables<"suppliers"> | null
 }
 
-export default function PurchaseInvoiceDetailPage({ params }: { params: { id: string } }) {
+export default function PurchaseInvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const [invoiceId, setInvoiceId] = useState<string | null>(null)
   const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setInvoiceId(p.id));
+  }, [params]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -62,12 +68,13 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: { id: st
       return
     }
 
-    if (user) {
+    if (user && invoiceId) {
       fetchInvoice()
     }
-  }, [user, authLoading, params.id])
+  }, [user, authLoading, invoiceId])
 
   const fetchInvoice = async () => {
+    if (!invoiceId) return;
     setIsLoading(true)
     try {
       // Fetch invoice data with supplier details
@@ -83,7 +90,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: { id: st
             email
           )
         `)
-        .eq("id", params.id)
+        .eq("id", invoiceId)
         .eq("user_id", user!.id)
         .single()
 
@@ -188,7 +195,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: { id: st
       const { error } = await supabase
         .from("purchase_invoices")
         .delete()
-        .eq("id", params.id)
+        .eq("id", invoiceId)
         .eq("user_id", user.id)
 
       if (error) throw error
@@ -257,7 +264,7 @@ export default function PurchaseInvoiceDetailPage({ params }: { params: { id: st
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" asChild>
-                      <Link href={`/purchases/invoices/${params.id}/edit`}>
+                      <Link href={`/purchases/invoices/${invoiceId}/edit`}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </Link>

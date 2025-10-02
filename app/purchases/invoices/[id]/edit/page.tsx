@@ -23,10 +23,11 @@ import { Tables } from "@/lib/database.types"
 type Supplier = Tables<"suppliers">
 type PurchaseInvoice = Tables<"purchase_invoices">
 
-export default function EditPurchaseInvoicePage({ params }: { params: { id: string } }) {
+export default function EditPurchaseInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const [invoiceId, setInvoiceId] = useState<string | null>(null)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -46,6 +47,11 @@ export default function EditPurchaseInvoicePage({ params }: { params: { id: stri
     notes: "",
   })
 
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setInvoiceId(p.id));
+  }, [params]);
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/")
@@ -57,11 +63,11 @@ export default function EditPurchaseInvoicePage({ params }: { params: { id: stri
       return
     }
 
-    if (user) {
+    if (user && invoiceId) {
       fetchSuppliers()
       fetchInvoice()
     }
-  }, [user, authLoading, params.id])
+  }, [user, authLoading, invoiceId])
 
   const fetchSuppliers = async () => {
     if (!user) return
@@ -88,12 +94,13 @@ export default function EditPurchaseInvoicePage({ params }: { params: { id: stri
   }
 
   const fetchInvoice = async () => {
+    if (!invoiceId) return;
     setIsLoading(true)
     try {
       const { data, error } = await supabase
         .from("purchase_invoices")
         .select("*")
-        .eq("id", params.id)
+        .eq("id", invoiceId)
         .eq("user_id", user!.id)
         .single()
 
@@ -308,7 +315,7 @@ export default function EditPurchaseInvoicePage({ params }: { params: { id: stri
           invoice_file_url,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", params.id)
+        .eq("id", invoiceId)
         .eq("user_id", user.id)
 
       if (error) throw error
@@ -317,8 +324,8 @@ export default function EditPurchaseInvoicePage({ params }: { params: { id: stri
         title: "Purchase invoice updated successfully",
         description: `Invoice #${formData.invoice_number} has been updated`,
       })
-      
-      router.push(`/purchases/invoices/${params.id}`)
+
+      router.push(`/purchases/invoices/${invoiceId}`)
     } catch (error: any) {
       console.error("Error updating purchase invoice:", error)
       toast({
@@ -653,7 +660,7 @@ export default function EditPurchaseInvoicePage({ params }: { params: { id: stri
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push(`/purchases/invoices/${params.id}`)}
+                  onClick={() => router.push(`/purchases/invoices/${invoiceId}`)}
                   disabled={isSubmitting}
                 >
                   Cancel

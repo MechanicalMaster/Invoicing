@@ -28,13 +28,19 @@ type SupplierWithInvoiceCount = Tables<"suppliers"> & {
   invoiceCount: number;
 }
 
-export default function SupplierDetailPage({ params }: { params: { id: string } }) {
+export default function SupplierDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const [supplierId, setSupplierId] = useState<string | null>(null)
   const [supplier, setSupplier] = useState<SupplierWithInvoiceCount | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setSupplierId(p.id));
+  }, [params]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -47,19 +53,20 @@ export default function SupplierDetailPage({ params }: { params: { id: string } 
       return
     }
 
-    if (user) {
+    if (user && supplierId) {
       fetchSupplier()
     }
-  }, [user, authLoading, params.id])
+  }, [user, authLoading, supplierId])
 
   const fetchSupplier = async () => {
+    if (!supplierId) return;
     setIsLoading(true)
     try {
       // Fetch supplier data
       const { data: supplierData, error: supplierError } = await supabase
         .from("suppliers")
         .select("*")
-        .eq("id", params.id)
+        .eq("id", supplierId)
         .eq("user_id", user!.id)
         .single()
 
@@ -81,7 +88,7 @@ export default function SupplierDetailPage({ params }: { params: { id: string } 
       const { count, error: countError } = await supabase
         .from("purchase_invoices")
         .select("*", { count: 'exact', head: true })
-        .eq("supplier_id", params.id)
+        .eq("supplier_id", supplierId)
         .eq("user_id", user!.id)
 
       if (countError) {
@@ -109,7 +116,7 @@ export default function SupplierDetailPage({ params }: { params: { id: string } 
       const { error } = await supabase
         .from("suppliers")
         .delete()
-        .eq("id", params.id)
+        .eq("id", supplierId)
         .eq("user_id", user.id)
 
       if (error) throw error
@@ -175,7 +182,7 @@ export default function SupplierDetailPage({ params }: { params: { id: string } 
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" asChild>
-                      <Link href={`/purchases/suppliers/${params.id}/edit`}>
+                      <Link href={`/purchases/suppliers/${supplierId}/edit`}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </Link>
@@ -272,7 +279,7 @@ export default function SupplierDetailPage({ params }: { params: { id: string } 
               <Button variant="outline" onClick={() => router.push("/purchases?tab=suppliers")}>
                 Back to Suppliers
               </Button>
-              <Link href={`/purchases/invoices/add?supplier=${params.id}`}>
+              <Link href={`/purchases/invoices/add?supplier=${supplierId}`}>
                 <Button>
                   Create Purchase Invoice
                 </Button>

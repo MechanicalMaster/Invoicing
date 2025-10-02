@@ -34,9 +34,10 @@ const customerData = {
   notes: "Prefers gold jewelry with traditional designs. Birthday on 15th August.",
 }
 
-export default function EditCustomerPage({ params }: { params: { id: string } }) {
+export default function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth();
   const router = useRouter()
+  const [customerId, setCustomerId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -55,16 +56,21 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setCustomerId(p.id))
+  }, [params])
+
   // Fetch customer data
   useEffect(() => {
     const fetchCustomer = async () => {
-      if (!user) return;
+      if (!user || !customerId) return;
 
       try {
         const { data, error } = await supabase
           .from('customers')
           .select('*')
-          .eq('id', params.id)
+          .eq('id', customerId)
           .eq('user_id', user.id)
           .single();
 
@@ -111,7 +117,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
     };
 
     fetchCustomer();
-  }, [params.id, user, router]);
+  }, [customerId, user, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -293,7 +299,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
           referred_by: formData.referredBy || null,
           referral_notes: formData.referralNotes || null
         })
-        .eq('id', params.id)
+        .eq('id', customerId)
         .eq('user_id', user.id)
         .select()
 
@@ -307,7 +313,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
       })
 
       // Redirect to customer detail page
-      router.push(`/customers/${params.id}`)
+      router.push(`/customers/${customerId}`)
     } catch (error: any) {
       toast({
         title: "Error",
@@ -356,7 +362,7 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
-          <Link href={`/customers/${params.id}`}>
+          <Link href={`/customers/${customerId}`}>
             <Button variant="ghost" size="sm" className="gap-1">
               <ArrowLeft className="h-4 w-4" />
               Back to Customer
@@ -604,11 +610,11 @@ export default function EditCustomerPage({ params }: { params: { id: string } })
           </div>
 
           <div className="mt-6 flex justify-end gap-4">
-            <Link href={`/customers/${params.id}`}>
+            <Link href={`/customers/${customerId}`}>
               <Button variant="outline">Cancel</Button>
             </Link>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="bg-primary hover:bg-primary/90"
               disabled={isSubmitting}
             >

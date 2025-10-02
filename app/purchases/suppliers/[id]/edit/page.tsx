@@ -17,10 +17,11 @@ import { Tables } from "@/lib/database.types"
 
 type Supplier = Tables<"suppliers">
 
-export default function EditSupplierPage({ params }: { params: { id: string } }) {
+export default function EditSupplierPage({ params }: { params: Promise<{ id: string }> }) {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const [supplierId, setSupplierId] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [formData, setFormData] = useState({
@@ -31,6 +32,11 @@ export default function EditSupplierPage({ params }: { params: { id: string } })
     address: "",
     notes: "",
   })
+
+  // Unwrap params
+  useEffect(() => {
+    params.then(p => setSupplierId(p.id));
+  }, [params]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -43,18 +49,19 @@ export default function EditSupplierPage({ params }: { params: { id: string } })
       return
     }
 
-    if (user) {
+    if (user && supplierId) {
       fetchSupplier()
     }
-  }, [user, authLoading, params.id])
+  }, [user, authLoading, supplierId])
 
   const fetchSupplier = async () => {
+    if (!supplierId) return;
     setIsLoading(true)
     try {
       const { data, error } = await supabase
         .from("suppliers")
         .select("*")
-        .eq("id", params.id)
+        .eq("id", supplierId)
         .eq("user_id", user!.id)
         .single()
 
@@ -125,7 +132,7 @@ export default function EditSupplierPage({ params }: { params: { id: string } })
           ...formData,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", params.id)
+        .eq("id", supplierId)
         .eq("user_id", user.id)
 
       if (error) throw error
@@ -134,8 +141,8 @@ export default function EditSupplierPage({ params }: { params: { id: string } })
         title: "Supplier updated successfully",
         description: `${formData.name} has been updated`,
       })
-      
-      router.push(`/purchases/suppliers/${params.id}`)
+
+      router.push(`/purchases/suppliers/${supplierId}`)
     } catch (error: any) {
       console.error("Error updating supplier:", error)
       toast({
@@ -295,7 +302,7 @@ export default function EditSupplierPage({ params }: { params: { id: string } })
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push(`/purchases/suppliers/${params.id}`)}
+                  onClick={() => router.push(`/purchases/suppliers/${supplierId}`)}
                   disabled={isSubmitting}
                 >
                   Cancel
