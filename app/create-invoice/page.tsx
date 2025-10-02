@@ -50,9 +50,9 @@ interface InvoiceItem {
 interface Customer {
   id: string
   name: string
-  address?: string
-  phone?: string
-  email?: string
+  address?: string | null
+  phone?: string | null
+  email?: string | null
 }
 
 export default function CreateInvoicePage() {
