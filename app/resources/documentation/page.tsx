@@ -237,63 +237,6 @@ export default function DocumentationPage() {
         </Card>
       </div>
 
-      <Separator className="my-10 bg-amber-100" />
-
-      <div className="mb-4">
-        <h2 className="mb-2 text-2xl font-bold text-amber-800">API Documentation</h2>
-        <p className="text-muted-foreground">For developers who want to integrate with Ratna Invoicing</p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="transition-all hover:border-amber-300 hover:shadow-md">
-          <CardHeader>
-            <CardTitle className="text-amber-800">Authentication</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Learn how to authenticate with our API using OAuth 2.0 and manage API keys.
-            </p>
-            <Button variant="outline" asChild className="w-full">
-              <Link href="/resources/documentation/api/authentication">
-                View Authentication <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="transition-all hover:border-amber-300 hover:shadow-md">
-          <CardHeader>
-            <CardTitle className="text-amber-800">Endpoints</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Comprehensive list of all API endpoints with examples and use cases.
-            </p>
-            <Button variant="outline" asChild className="w-full">
-              <Link href="/resources/documentation/api/endpoints">
-                View Endpoints <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="transition-all hover:border-amber-300 hover:shadow-md">
-          <CardHeader>
-            <CardTitle className="text-amber-800">Webhooks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Set up webhooks to get real-time notifications for events in your account.
-            </p>
-            <Button variant="outline" asChild className="w-full">
-              <Link href="/resources/documentation/api/webhooks">
-                View Webhooks <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="mt-8">
         <Button variant="outline" asChild className="text-amber-700 hover:bg-amber-50 hover:text-amber-800">
           <Link href="/">
