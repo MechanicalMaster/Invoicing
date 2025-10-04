@@ -30,25 +30,25 @@ export function ActionConfirmationCard({
   const hasWarnings = action.validationErrors.some(e => e.severity === 'warning')
 
   return (
-    <Card className="border-amber-200 shadow-lg">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
+    <Card className="border-amber-200 shadow-lg w-full overflow-hidden">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <CardTitle className="flex items-center gap-2 text-base">
               {getActionIcon(action.type)}
-              {getActionTitle(action.type)}
+              <span className="truncate">{getActionTitle(action.type)}</span>
             </CardTitle>
-            <CardDescription>
-              Please review and confirm the action
+            <CardDescription className="text-xs">
+              Review and confirm
             </CardDescription>
           </div>
-          <Badge variant={hasErrors ? 'destructive' : hasWarnings ? 'secondary' : 'default'}>
+          <Badge variant={hasErrors ? 'destructive' : hasWarnings ? 'secondary' : 'default'} className="text-xs shrink-0">
             {action.status}
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 pb-3">
         {/* Validation Messages */}
         {action.validationErrors.length > 0 && (
           <div className="space-y-2">
@@ -87,11 +87,13 @@ export function ActionConfirmationCard({
         )}
       </CardContent>
 
-      <CardFooter className="flex gap-2">
+      <CardFooter className="flex gap-2 pt-3 pb-4 flex-wrap">
         <Button
           variant="outline"
           onClick={onCancel}
           disabled={isExecuting}
+          size="sm"
+          className="flex-1 min-w-[80px]"
         >
           Cancel
         </Button>
@@ -101,6 +103,8 @@ export function ActionConfirmationCard({
             variant="secondary"
             onClick={onEdit}
             disabled={isExecuting}
+            size="sm"
+            className="flex-1 min-w-[80px]"
           >
             Edit
           </Button>
@@ -109,7 +113,8 @@ export function ActionConfirmationCard({
         <Button
           onClick={onConfirm}
           disabled={hasErrors || action.missingFields.length > 0 || isExecuting}
-          className="ml-auto bg-amber-600 hover:bg-amber-700"
+          className="flex-1 min-w-[120px] bg-amber-600 hover:bg-amber-700"
+          size="sm"
         >
           {isExecuting ? (
             <>
@@ -119,7 +124,7 @@ export function ActionConfirmationCard({
           ) : (
             <>
               <CheckCircle className="mr-2 h-4 w-4" />
-              Confirm & Create
+              Confirm
             </>
           )}
         </Button>

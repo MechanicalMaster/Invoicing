@@ -11,7 +11,7 @@ const openai = new OpenAI({
 
 export const CREATE_INVOICE_FUNCTION = {
   name: 'create_invoice',
-  description: 'Create a new sales invoice for a customer. Use this when the user wants to generate a bill, create an invoice, or record a sale.',
+  description: 'Create a new sales invoice for a customer. Use this when the user wants to generate a bill, create an invoice, or record a sale. IMPORTANT: ALL DATA MUST BE IN ENGLISH ONLY - translate from Hindi/Marathi/other languages to English.',
   parameters: {
     type: 'object',
     properties: {
@@ -20,7 +20,7 @@ export const CREATE_INVOICE_FUNCTION = {
         properties: {
           name: {
             type: 'string',
-            description: 'Customer full name (required)'
+            description: 'Customer full name in ENGLISH ONLY (required). If name is in Hindi/Marathi, translate to English. Example: "राम कुमार" → "Ram Kumar"'
           },
           phone: {
             type: 'string',
@@ -32,7 +32,7 @@ export const CREATE_INVOICE_FUNCTION = {
           },
           address: {
             type: 'string',
-            description: 'Customer address (optional)'
+            description: 'Customer address in ENGLISH ONLY (optional). Translate if in other language.'
           },
           existingCustomerId: {
             type: 'string',
@@ -43,13 +43,13 @@ export const CREATE_INVOICE_FUNCTION = {
       },
       items: {
         type: 'array',
-        description: 'Array of items to include in the invoice',
+        description: 'Array of items to include in the invoice. ALL ITEM NAMES MUST BE IN ENGLISH ONLY.',
         items: {
           type: 'object',
           properties: {
             name: {
               type: 'string',
-              description: 'Item name (e.g., "Gold Ring", "Silver Necklace")'
+              description: 'Item name in ENGLISH ONLY (e.g., "Gold Ring", "Silver Necklace"). Translate from Hindi/Marathi: "सोने की अंगूठी" → "Gold Ring", "चांदी का हार" → "Silver Necklace"'
             },
             quantity: {
               type: 'integer',

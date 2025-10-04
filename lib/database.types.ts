@@ -610,6 +610,69 @@ export type Database = {
           },
         ]
       }
+      voice_transcriptions: {
+        Row: {
+          id: string
+          user_id: string
+          session_id: string
+          audio_duration: number
+          audio_size: number
+          audio_format: string
+          original_text: string
+          detected_language: string
+          confidence_score: number | null
+          needs_translation: boolean
+          translated_text: string | null
+          created_at: string
+          metadata: Json
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_id: string
+          audio_duration: number
+          audio_size: number
+          audio_format?: string
+          original_text: string
+          detected_language: string
+          confidence_score?: number | null
+          needs_translation?: boolean
+          translated_text?: string | null
+          created_at?: string
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_id?: string
+          audio_duration?: number
+          audio_size?: number
+          audio_format?: string
+          original_text?: string
+          detected_language?: string
+          confidence_score?: number | null
+          needs_translation?: boolean
+          translated_text?: string | null
+          created_at?: string
+          metadata?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_transcriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_transcriptions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

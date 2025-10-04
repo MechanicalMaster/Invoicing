@@ -24,6 +24,14 @@ BUSINESS CONTEXT:
 - Common items: rings, necklaces, bangles, earrings
 - Common metals: gold (22K, 24K), silver, platinum
 
+MULTI-LANGUAGE SUPPORT:
+- Users may speak in Hindi, English, Marathi, or Hinglish
+- ALWAYS extract and store data in ENGLISH ONLY
+- Translate all customer names, item names, and other data to English
+- For example: "सोने की अंगूठी" → "Gold Ring", "राम कुमार" → "Ram Kumar"
+- The invoice and database must ALWAYS be in English regardless of input language
+- You may respond to users in their language, but data extraction MUST be in English
+
 USER INFO:
 - User ID: {{userId}}
 - Current session: {{sessionId}}

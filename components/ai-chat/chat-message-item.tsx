@@ -89,11 +89,11 @@ export function ChatMessageItem({ message, onRetry }: ChatMessageItemProps) {
         </Avatar>
       )}
 
-      <div className={cn('flex flex-col', isUser ? 'items-end' : 'items-start', hasAction ? 'w-full max-w-[90%]' : 'max-w-[75%] md:max-w-[70%]')}>
+      <div className={cn('flex flex-col w-full', isUser ? 'items-end' : 'items-start')}>
         {!hasAction && (
           <div
             className={cn(
-              'rounded-[18px] px-4 py-3 transition-all',
+              'rounded-[18px] px-4 py-3 transition-all max-w-[85%] md:max-w-[70%]',
               isUser
                 ? 'bg-[#EA7317] text-white shadow-sm'
                 : 'bg-[#F7F7F8] text-[#353740] dark:bg-[#2A2B32] dark:text-[#ECECF1]',
@@ -109,8 +109,8 @@ export function ChatMessageItem({ message, onRetry }: ChatMessageItemProps) {
 
         {/* Action Confirmation Card */}
         {hasAction && message.action.type === 'create_invoice' && (
-          <div className="w-full">
-            <div className="rounded-[18px] px-4 py-3 mb-3 bg-[#F7F7F8] text-[#353740] dark:bg-[#2A2B32] dark:text-[#ECECF1]">
+          <div className="w-full max-w-full">
+            <div className="rounded-[18px] px-4 py-3 mb-3 bg-[#F7F7F8] text-[#353740] dark:bg-[#2A2B32] dark:text-[#ECECF1] max-w-[85%] md:max-w-[70%]">
               <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.6] md:text-base md:leading-[1.7]">
                 {message.content}
               </p>

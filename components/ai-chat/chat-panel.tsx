@@ -48,8 +48,8 @@ export function ChatPanel() {
           'fixed z-50 flex flex-col',
           // Mobile: fullscreen
           'bottom-0 left-0 right-0 top-0 h-screen w-screen',
-          // Desktop: side panel
-          'md:bottom-4 md:right-4 md:top-4 md:h-[calc(100vh-2rem)] md:w-[440px] md:rounded-xl md:shadow-2xl md:border md:border-[#D1D5DB] dark:md:border-[#4E4F60]',
+          // Desktop: side panel on the RIGHT
+          'md:bottom-4 md:right-4 md:top-4 md:left-auto md:h-[calc(100vh-2rem)] md:w-[440px] md:max-w-[calc(100vw-2rem)] md:rounded-xl md:shadow-2xl md:border md:border-[#D1D5DB] dark:md:border-[#4E4F60]',
           // Background
           'bg-white dark:bg-[#212121]',
           // Animation
