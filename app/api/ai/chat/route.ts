@@ -3,6 +3,10 @@ import OpenAI from 'openai'
 import { supabaseServer } from '@/lib/supabase-server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/database.types'
+import { extractInvoiceAction } from '@/lib/ai/actions/invoice/invoice-extractor'
+import { validateInvoiceAction } from '@/lib/ai/actions/invoice/invoice-validator'
+import { InvoiceActionData } from '@/lib/ai/actions/invoice/invoice-action-schema'
+import { AIAction } from '@/lib/ai/actions/types'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -20,7 +24,7 @@ YOUR CAPABILITIES:
 1. Answer questions about how to use the app
 2. Provide guidance on creating invoices, managing inventory, and tracking customers
 3. Help users navigate features and troubleshoot issues
-4. In future updates, you'll be able to execute actions like creating invoices
+4. Execute actions like creating invoices through AI commands
 
 TONE:
 - Professional yet friendly
@@ -28,10 +32,9 @@ TONE:
 - Patient and helpful
 - Use Indian business context (GST, rupees, etc.)
 
-CURRENT LIMITATIONS:
-- You cannot directly access user data or perform actions yet
-- You can guide users on where to find features
-- If asked to create/modify data, explain the manual steps for now
+ACTIONS YOU CAN PERFORM:
+- Create invoices: When users ask to create an invoice, you can extract the details and prepare it for creation
+- More actions coming soon
 
 Always respond in a helpful, context-aware manner. If you're unsure about specific app features, be honest and suggest checking the documentation.`
 
@@ -142,15 +145,104 @@ export async function POST(request: NextRequest) {
     if (historyError) throw historyError
 
     // Build messages array for OpenAI (reverse to get chronological order)
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...history.reverse().map((msg: { role: string; content: string }) => ({
+    const conversationHistory: OpenAI.Chat.ChatCompletionMessageParam[] = history
+      .reverse()
+      .map((msg: { role: string; content: string }) => ({
         role: msg.role as 'user' | 'assistant' | 'system',
         content: msg.content,
-      })),
+      }))
+
+    // Try to extract action intent
+    let action: AIAction<InvoiceActionData> | null = null
+    let isActionIntent = false
+
+    try {
+      action = await extractInvoiceAction(message, conversationHistory, user.id, activeSessionId)
+      isActionIntent = true
+    } catch (e) {
+      // Not an action intent, treat as normal conversation
+      isActionIntent = false
+    }
+
+    if (isActionIntent && action) {
+      console.log('Action intent detected:', action.type, 'ID:', action.id)
+
+      // Validate the extracted action
+      const validation = await validateInvoiceAction(action.data, user.id)
+
+      action.validationErrors = validation.errors
+      action.status = validation.isValid ? 'awaiting_confirmation' : 'validating'
+
+      if (validation.enhancedData) {
+        action.data = validation.enhancedData
+      }
+
+      console.log('Saving action to database:', {
+        id: action.id,
+        type: action.type,
+        status: action.status
+      })
+
+      // Save action to database
+      const { error: insertError } = await (supabaseServer as any).from('ai_actions').insert({
+        id: action.id,
+        user_id: user.id,
+        session_id: activeSessionId,
+        action_type: action.type,
+        status: action.status,
+        extracted_data: action.data,
+        validation_errors: action.validationErrors,
+        missing_fields: action.missingFields,
+      })
+
+      if (insertError) {
+        console.error('Failed to save action to database:', insertError)
+        // Continue anyway - we'll still show the confirmation UI
+      } else {
+        console.log('Action saved successfully to database')
+      }
+
+      // Generate confirmation message
+      const confirmationMessage = generateActionConfirmationMessage(action)
+
+      // Save assistant response to database
+      const { data: assistantMessage, error: assistantMessageError } = await supabaseServer
+        .from('ai_chat_messages')
+        .insert({
+          session_id: activeSessionId,
+          user_id: user.id,
+          role: 'assistant',
+          content: confirmationMessage,
+          metadata: { model: 'gpt-4o-mini', actionId: action.id },
+        })
+        .select()
+        .single()
+
+      if (assistantMessageError) throw assistantMessageError
+
+      // Update session updated_at
+      await supabaseServer
+        .from('ai_chat_sessions')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', activeSessionId)
+
+      // Return action for UI to show confirmation
+      return NextResponse.json({
+        type: 'action',
+        action: action,
+        response: confirmationMessage,
+        sessionId: activeSessionId,
+        messageId: assistantMessage.id,
+        userMessageId: userMessage.id,
+      })
+    }
+
+    // Normal conversation - call OpenAI for response
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...conversationHistory,
     ]
 
-    // Call OpenAI API
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages,
@@ -184,6 +276,7 @@ export async function POST(request: NextRequest) {
       .eq('id', activeSessionId)
 
     return NextResponse.json({
+      type: 'message',
       response: assistantResponse,
       sessionId: activeSessionId,
       messageId: assistantMessage.id,
@@ -211,4 +304,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+function generateActionConfirmationMessage(action: AIAction<InvoiceActionData>): string {
+  if (action.type === 'create_invoice') {
+    const data = action.data
+    return `I've prepared an invoice for ${data.customerName} with ${data.items.length} item(s) totaling ₹${data.grandTotal?.toLocaleString('en-IN')}. Please review and confirm to create it.`
+  }
+  return 'Action prepared. Please review and confirm.'
 }

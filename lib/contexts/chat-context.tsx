@@ -10,6 +10,8 @@ export interface ChatMessage {
   timestamp: Date
   status: 'sending' | 'sent' | 'error'
   sessionId?: string
+  action?: any // AI action data if this message has an associated action
+  actionId?: string // ID of the action if this is an action message
 }
 
 export interface ChatSession {
@@ -261,6 +263,8 @@ export function ChatProvider({ children }: ChatProviderProps) {
           timestamp: new Date(),
           status: 'sent',
           sessionId: currentSession.id,
+          action: data.type === 'action' ? data.action : undefined,
+          actionId: data.action?.id,
         }
 
         setMessages((prev) => [...prev, assistantMessage])

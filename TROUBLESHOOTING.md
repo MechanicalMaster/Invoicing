@@ -66,6 +66,45 @@ supabase migration up
 3. Check account credits at https://platform.openai.com/usage
 4. Check OpenAI status at https://status.openai.com
 
+### ❌ "Action not found" (AI Invoice Creation)
+
+**Cause**: The `ai_actions` table doesn't exist in database OR action wasn't saved properly
+
+**Solution**:
+
+**Step 1: Run the ai_actions migration**
+```sql
+-- In Supabase SQL Editor, run:
+-- File: migrations/create_ai_actions_table.sql
+-- (Copy and paste the entire contents)
+```
+
+**Step 2: Verify table exists**
+```sql
+SELECT * FROM ai_actions LIMIT 1;
+```
+
+**Step 3: Check browser console**
+Open DevTools (F12) and look for:
+- `Action intent detected: create_invoice ID: xxx`
+- `Saving action to database: { ... }`
+- `Action saved successfully to database`
+
+**Step 4: If table exists but still failing**
+```sql
+-- Check recent actions
+SELECT * FROM ai_actions
+WHERE user_id = auth.uid()
+ORDER BY created_at DESC
+LIMIT 5;
+```
+
+**Debugging steps**:
+1. Hard refresh browser (Cmd+Shift+R or Ctrl+Shift+R)
+2. Try creating invoice again
+3. Check server logs in terminal
+4. Verify RLS policies allow insert/select on ai_actions table
+
 ### ❌ Chat button not appearing
 
 **Possible causes**:

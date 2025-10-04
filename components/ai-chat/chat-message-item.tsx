@@ -7,6 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
+import { ActionConfirmationCard } from './action-confirmation-card'
+import { InvoicePreviewCard } from './invoice-preview-card'
+import { InvoiceActionData } from '@/lib/ai/actions/invoice/invoice-action-schema'
+import { useRouter } from 'next/navigation'
+import supabase from '@/lib/supabase'
 
 interface ChatMessageItemProps {
   message: ChatMessage
@@ -17,6 +22,55 @@ export function ChatMessageItem({ message, onRetry }: ChatMessageItemProps) {
   const isUser = message.role === 'user'
   const isError = message.status === 'error'
   const [showActions, setShowActions] = useState(false)
+  const [isExecuting, setIsExecuting] = useState(false)
+  const router = useRouter()
+
+  const hasAction = !isUser && message.action
+
+  const handleConfirmAction = async () => {
+    if (!message.actionId) {
+      console.error('No actionId found in message:', message)
+      alert('No action ID found. Please try creating the invoice again.')
+      return
+    }
+
+    console.log('Executing action with ID:', message.actionId)
+    setIsExecuting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      const response = await fetch('/api/ai/execute-action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({ actionId: message.actionId }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to execute action')
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.redirectUrl) {
+        router.push(result.redirectUrl)
+      }
+    } catch (error) {
+      console.error('Failed to execute action:', error)
+      alert(error instanceof Error ? error.message : 'Failed to execute action')
+    } finally {
+      setIsExecuting(false)
+    }
+  }
+
+  const handleCancelAction = () => {
+    // Just close/hide the action card - no API call needed
+    console.log('Action cancelled')
+  }
 
   return (
     <div
@@ -35,21 +89,42 @@ export function ChatMessageItem({ message, onRetry }: ChatMessageItemProps) {
         </Avatar>
       )}
 
-      <div className={cn('flex flex-col', isUser ? 'items-end' : 'items-start', 'max-w-[75%] md:max-w-[70%]')}>
-        <div
-          className={cn(
-            'rounded-[18px] px-4 py-3 transition-all',
-            isUser
-              ? 'bg-[#EA7317] text-white shadow-sm'
-              : 'bg-[#F7F7F8] text-[#353740] dark:bg-[#2A2B32] dark:text-[#ECECF1]',
-            isError && 'border-2 border-red-500',
-            'hover:brightness-105'
-          )}
-        >
-          <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.6] md:text-base md:leading-[1.7]">
-            {message.content}
-          </p>
-        </div>
+      <div className={cn('flex flex-col', isUser ? 'items-end' : 'items-start', hasAction ? 'w-full max-w-[90%]' : 'max-w-[75%] md:max-w-[70%]')}>
+        {!hasAction && (
+          <div
+            className={cn(
+              'rounded-[18px] px-4 py-3 transition-all',
+              isUser
+                ? 'bg-[#EA7317] text-white shadow-sm'
+                : 'bg-[#F7F7F8] text-[#353740] dark:bg-[#2A2B32] dark:text-[#ECECF1]',
+              isError && 'border-2 border-red-500',
+              'hover:brightness-105'
+            )}
+          >
+            <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.6] md:text-base md:leading-[1.7]">
+              {message.content}
+            </p>
+          </div>
+        )}
+
+        {/* Action Confirmation Card */}
+        {hasAction && message.action.type === 'create_invoice' && (
+          <div className="w-full">
+            <div className="rounded-[18px] px-4 py-3 mb-3 bg-[#F7F7F8] text-[#353740] dark:bg-[#2A2B32] dark:text-[#ECECF1]">
+              <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.6] md:text-base md:leading-[1.7]">
+                {message.content}
+              </p>
+            </div>
+            <ActionConfirmationCard
+              action={message.action}
+              onConfirm={handleConfirmAction}
+              onCancel={handleCancelAction}
+              isExecuting={isExecuting}
+            >
+              <InvoicePreviewCard data={message.action.data as InvoiceActionData} />
+            </ActionConfirmationCard>
+          </div>
+        )}
 
         {/* Timestamp and actions */}
         <div className="mt-1 flex items-center gap-2 px-1">
