@@ -5,6 +5,7 @@ import { format, isToday, isYesterday, isThisWeek } from 'date-fns'
 import { useChatContext } from '@/lib/contexts/chat-context'
 import { ChatMessageItem } from './chat-message-item'
 import { ChatLoading } from './chat-loading'
+import { ChatWelcomeMessage } from './chat-welcome-message'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -74,18 +75,8 @@ export function ChatMessages() {
         )}
 
         {messages.length === 0 && !isLoading && !error && (
-          <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EA7317]">
-              <span className="text-2xl font-bold text-white">AI</span>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-[#353740] dark:text-[#ECECF1]">
-                Welcome to AI Assistant
-              </h3>
-              <p className="max-w-[320px] text-sm text-[#6E6E80]">
-                Ask me anything about invoices, inventory, customers, or how to use the app.
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center gap-4 py-8 px-4">
+            <ChatWelcomeMessage />
           </div>
         )}
 

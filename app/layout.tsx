@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import { NotificationProvider } from '@/lib/providers/notification-provider'
 import { ChatProvider } from '@/lib/contexts/chat-context'
+import { ChatModeProvider } from '@/lib/ai/context/chat-mode-context'
 import { Toaster } from "@/components/ui/toaster"
 import { ChatFloatingButton } from '@/components/ai-chat/chat-floating-button'
 import { ChatPanel } from '@/components/ai-chat/chat-panel'
@@ -29,12 +30,14 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <NotificationProvider>
-              <ChatProvider>
-                {children}
-                <ChatFloatingButton />
-                <ChatPanel />
-                <Toaster />
-              </ChatProvider>
+              <ChatModeProvider>
+                <ChatProvider>
+                  {children}
+                  <ChatFloatingButton />
+                  <ChatPanel />
+                  <Toaster />
+                </ChatProvider>
+              </ChatModeProvider>
             </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>

@@ -7,50 +7,37 @@ import { extractInvoiceAction } from '@/lib/ai/actions/invoice/invoice-extractor
 import { validateInvoiceAction } from '@/lib/ai/actions/invoice/invoice-validator'
 import { InvoiceActionData } from '@/lib/ai/actions/invoice/invoice-action-schema'
 import { AIAction } from '@/lib/ai/actions/types'
+import { buildSalesPrompt } from '@/lib/ai/modes/prompts/sales-prompt'
+import { buildAssistantPrompt } from '@/lib/ai/modes/prompts/assistant-prompt'
+import { buildHelpPrompt } from '@/lib/ai/modes/prompts/help-prompt'
+import { ChatMode } from '@/lib/ai/modes/types'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-const SYSTEM_PROMPT = `You are an AI assistant for Sethiya Gold, a jewelry shop management system.
-
-CONTEXT:
-- This is a Next.js application for managing invoices, inventory, customers, and orders
-- Users are jewelry shop owners and employees
-- The app handles gold, silver, and diamond jewelry items
-- Pricing is typically per gram for precious metals
-
-YOUR CAPABILITIES:
-1. Answer questions about how to use the app
-2. Provide guidance on creating invoices, managing inventory, and tracking customers
-3. Help users navigate features and troubleshoot issues
-4. Execute actions like creating invoices through AI commands
-
-TONE:
-- Professional yet friendly
-- Clear and concise
-- Patient and helpful
-- Use Indian business context (GST, rupees, etc.)
-
-ACTIONS YOU CAN PERFORM:
-- Create invoices: When users ask to create an invoice, you can extract the details and prepare it for creation
-- More actions coming soon
-
-Always respond in a helpful, context-aware manner. If you're unsure about specific app features, be honest and suggest checking the documentation.`
-
-// Rate limiting: 10 requests per minute per user
+// Rate limiting: different limits per mode
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
 
-function checkRateLimit(userId: string): boolean {
+function checkRateLimit(identifier: string, mode: ChatMode): boolean {
   const now = Date.now()
-  const userLimit = rateLimitMap.get(userId)
+  const userLimit = rateLimitMap.get(identifier)
+
+  // Different rate limits per mode
+  const limits = {
+    sales: 20, // 20 requests per hour for guests
+    assistant: 100, // 100 requests per hour for authenticated
+    help: 30, // 30 requests per hour
+  }
+
+  const maxRequests = limits[mode]
 
   if (!userLimit || now > userLimit.resetTime) {
-    rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 })
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + 3600000 }) // 1 hour
     return true
   }
 
-  if (userLimit.count >= 10) {
+  if (userLimit.count >= maxRequests) {
     return false
   }
 
@@ -60,228 +47,308 @@ function checkRateLimit(userId: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get auth token from request
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '')
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey)
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser(token)
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check rate limit
-    if (!checkRateLimit(user.id)) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait a moment before trying again.' },
-        { status: 429 }
-      )
-    }
-
     const body = await request.json()
-    const { message, sessionId } = body
+    const { message, sessionId, mode, context } = body
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Invalid message' }, { status: 400 })
     }
 
-    // Validate message length
-    if (message.length > 2000) {
+    if (!mode || !['sales', 'assistant', 'help'].includes(mode)) {
+      return NextResponse.json({ error: 'Invalid mode' }, { status: 400 })
+    }
+
+    // Validate message length (stricter for guest users)
+    const maxLength = mode === 'sales' || mode === 'help' ? 500 : 2000
+    if (message.length > maxLength) {
       return NextResponse.json({ error: 'Message too long' }, { status: 400 })
     }
 
-    // Get or validate session
+    // Get auth token from request (may be null for guest mode)
+    const token = request.headers.get('Authorization')?.replace('Bearer ', '')
+    let user = null
+
+    if (token) {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      const supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey)
+
+      const {
+        data: { user: authUser },
+      } = await supabaseClient.auth.getUser(token)
+
+      user = authUser
+    }
+
+    // Validate mode vs authentication state
+    if (mode === 'assistant' && !user) {
+      return NextResponse.json({ error: 'Assistant mode requires authentication' }, { status: 401 })
+    }
+
+    // Rate limit identifier (user ID or IP address)
+    const rateLimitIdentifier = user?.id || request.headers.get('x-forwarded-for') || 'anonymous'
+
+    if (!checkRateLimit(rateLimitIdentifier, mode)) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before trying again.' },
+        { status: 429 }
+      )
+    }
+
+    // Build system prompt based on mode
+    let systemPrompt: string
+
+    switch (mode) {
+      case 'sales':
+        systemPrompt = buildSalesPrompt({
+          currentDate: new Date().toLocaleDateString('en-IN'),
+          currentPage: context?.currentPage || '/',
+          userQuestions: context?.previousQuestions,
+        })
+        break
+
+      case 'assistant':
+        // Fetch user context data
+        const [userSettings, recentInvoices, customerCount, invoiceCount] = await Promise.all([
+          supabaseServer
+            .from('user_settings')
+            .select('firm_name')
+            .eq('user_id', user!.id)
+            .single()
+            .then((res) => res.data),
+
+          supabaseServer
+            .from('invoices')
+            .select('invoice_number, created_at')
+            .eq('user_id', user!.id)
+            .order('created_at', { ascending: false })
+            .limit(5)
+            .then((res) => res.data),
+
+          supabaseServer
+            .from('customers')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user!.id)
+            .then((res) => res.count || 0),
+
+          supabaseServer
+            .from('invoices')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user!.id)
+            .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+            .then((res) => res.count || 0),
+        ])
+
+        systemPrompt = buildAssistantPrompt({
+          userName: user!.email?.split('@')[0] || 'User',
+          userId: user!.id,
+          shopName: userSettings?.firm_name || undefined,
+          currentPage: context?.currentPage || '/dashboard',
+          currentDate: new Date().toLocaleDateString('en-IN'),
+          recentActivity: recentInvoices?.map((inv) => inv.invoice_number).join(', '),
+          customerCount,
+          invoiceCount,
+        })
+        break
+
+      case 'help':
+        systemPrompt = buildHelpPrompt({
+          currentPage: context?.currentPage || '/documentation',
+          currentDate: new Date().toLocaleDateString('en-IN'),
+        })
+        break
+
+      default:
+        return NextResponse.json({ error: 'Invalid mode' }, { status: 400 })
+    }
+
+    // Handle conversation history differently for authenticated vs guest users
+    let conversationHistory: OpenAI.Chat.ChatCompletionMessageParam[] = []
     let activeSessionId = sessionId
 
-    if (!activeSessionId) {
-      const { data: newSession, error: sessionError } = await supabaseServer
-        .from('ai_chat_sessions')
+    if (user && mode === 'assistant') {
+      // Authenticated user: Load from database
+      if (!activeSessionId) {
+        const { data: newSession, error: sessionError } = await supabaseServer
+          .from('ai_chat_sessions')
+          .insert({
+            user_id: user.id,
+            title: 'New Chat',
+            is_active: true,
+          })
+          .select()
+          .single()
+
+        if (sessionError) throw sessionError
+        activeSessionId = newSession.id
+      }
+
+      // Save user message to database
+      const { data: userMessage, error: userMessageError } = await supabaseServer
+        .from('ai_chat_messages')
         .insert({
+          session_id: activeSessionId,
           user_id: user.id,
-          title: 'New Chat',
-          is_active: true,
+          role: 'user',
+          content: message,
+          metadata: { mode },
         })
         .select()
         .single()
 
-      if (sessionError) throw sessionError
-      activeSessionId = newSession.id
-    }
+      if (userMessageError) throw userMessageError
 
-    // Save user message to database
-    const { data: userMessage, error: userMessageError } = await supabaseServer
-      .from('ai_chat_messages')
-      .insert({
-        session_id: activeSessionId,
-        user_id: user.id,
-        role: 'user',
-        content: message,
-        metadata: {},
-      })
-      .select()
-      .single()
+      // Get conversation history (last 10 messages)
+      const { data: history } = await supabaseServer
+        .from('ai_chat_messages')
+        .select('role, content')
+        .eq('session_id', activeSessionId)
+        .order('created_at', { ascending: false })
+        .limit(10)
 
-    if (userMessageError) throw userMessageError
+      conversationHistory = (history || [])
+        .reverse()
+        .map((msg: { role: string; content: string }) => ({
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.content,
+        }))
 
-    // Get conversation history (last 10 messages)
-    const { data: history, error: historyError } = await supabaseServer
-      .from('ai_chat_messages')
-      .select('role, content')
-      .eq('session_id', activeSessionId)
-      .order('created_at', { ascending: false })
-      .limit(10)
+      // Try to extract action intent (only in assistant mode)
+      let action: AIAction<InvoiceActionData> | null = null
+      let isActionIntent = false
 
-    if (historyError) throw historyError
-
-    // Build messages array for OpenAI (reverse to get chronological order)
-    const conversationHistory: OpenAI.Chat.ChatCompletionMessageParam[] = history
-      .reverse()
-      .map((msg: { role: string; content: string }) => ({
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
-      }))
-
-    // Try to extract action intent
-    let action: AIAction<InvoiceActionData> | null = null
-    let isActionIntent = false
-
-    try {
-      action = await extractInvoiceAction(message, conversationHistory, user.id, activeSessionId)
-      isActionIntent = true
-    } catch (e) {
-      // Not an action intent, treat as normal conversation
-      isActionIntent = false
-    }
-
-    if (isActionIntent && action) {
-      console.log('Action intent detected:', action.type, 'ID:', action.id)
-
-      // Validate the extracted action
-      const validation = await validateInvoiceAction(action.data, user.id)
-
-      action.validationErrors = validation.errors
-      action.status = validation.isValid ? 'awaiting_confirmation' : 'validating'
-
-      if (validation.enhancedData) {
-        action.data = validation.enhancedData
+      try {
+        action = await extractInvoiceAction(message, conversationHistory, user.id, activeSessionId)
+        isActionIntent = true
+      } catch (e) {
+        isActionIntent = false
       }
 
-      console.log('Saving action to database:', {
-        id: action.id,
-        type: action.type,
-        status: action.status
-      })
+      if (isActionIntent && action) {
+        console.log('Action intent detected:', action.type, 'ID:', action.id)
 
-      // Save action to database
-      const { error: insertError } = await (supabaseServer as any).from('ai_actions').insert({
-        id: action.id,
-        user_id: user.id,
-        session_id: activeSessionId,
-        action_type: action.type,
-        status: action.status,
-        extracted_data: action.data,
-        validation_errors: action.validationErrors,
-        missing_fields: action.missingFields,
-      })
+        // Validate the extracted action
+        const validation = await validateInvoiceAction(action.data, user.id)
 
-      if (insertError) {
-        console.error('Failed to save action to database:', insertError)
-        // Continue anyway - we'll still show the confirmation UI
-      } else {
-        console.log('Action saved successfully to database')
+        action.validationErrors = validation.errors
+        action.status = validation.isValid ? 'awaiting_confirmation' : 'validating'
+
+        if (validation.enhancedData) {
+          action.data = validation.enhancedData
+        }
+
+        // Save action to database
+        const { error: insertError } = await (supabaseServer as any).from('ai_actions').insert({
+          id: action.id,
+          user_id: user.id,
+          session_id: activeSessionId,
+          action_type: action.type,
+          status: action.status,
+          extracted_data: action.data,
+          validation_errors: action.validationErrors,
+          missing_fields: action.missingFields,
+        })
+
+        if (insertError) {
+          console.error('Failed to save action to database:', insertError)
+        }
+
+        // Generate confirmation message
+        const confirmationMessage = generateActionConfirmationMessage(action)
+
+        // Save assistant response to database
+        const { data: assistantMessage, error: assistantMessageError } = await supabaseServer
+          .from('ai_chat_messages')
+          .insert({
+            session_id: activeSessionId,
+            user_id: user.id,
+            role: 'assistant',
+            content: confirmationMessage,
+            metadata: { model: 'gpt-4o-mini', actionId: action.id, mode },
+          })
+          .select()
+          .single()
+
+        if (assistantMessageError) throw assistantMessageError
+
+        // Update session
+        await supabaseServer
+          .from('ai_chat_sessions')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', activeSessionId)
+
+        return NextResponse.json({
+          type: 'action',
+          action: action,
+          response: confirmationMessage,
+          sessionId: activeSessionId,
+          messageId: assistantMessage.id,
+          userMessageId: userMessage.id,
+          mode,
+        })
       }
+    } else {
+      // Guest user (sales/help mode): No database storage, history handled in frontend
+      conversationHistory = []
+    }
 
-      // Generate confirmation message
-      const confirmationMessage = generateActionConfirmationMessage(action)
+    // Normal conversation - call OpenAI
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      ...conversationHistory,
+      { role: 'user', content: message },
+    ]
 
-      // Save assistant response to database
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages,
+      max_tokens: mode === 'sales' ? 500 : 1000,
+      temperature: mode === 'sales' ? 0.8 : 0.7, // More creative for sales
+    })
+
+    const assistantResponse =
+      completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.'
+    const tokensUsed = completion.usage?.total_tokens || 0
+
+    // Save to database only for authenticated users
+    if (user && mode === 'assistant' && activeSessionId) {
       const { data: assistantMessage, error: assistantMessageError } = await supabaseServer
         .from('ai_chat_messages')
         .insert({
           session_id: activeSessionId,
           user_id: user.id,
           role: 'assistant',
-          content: confirmationMessage,
-          metadata: { model: 'gpt-4o-mini', actionId: action.id },
+          content: assistantResponse,
+          metadata: { model: 'gpt-4o-mini', mode },
+          tokens_used: tokensUsed,
         })
         .select()
         .single()
 
       if (assistantMessageError) throw assistantMessageError
 
-      // Update session updated_at
       await supabaseServer
         .from('ai_chat_sessions')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', activeSessionId)
 
-      // Return action for UI to show confirmation
       return NextResponse.json({
-        type: 'action',
-        action: action,
-        response: confirmationMessage,
+        type: 'message',
+        response: assistantResponse,
         sessionId: activeSessionId,
         messageId: assistantMessage.id,
-        userMessageId: userMessage.id,
+        userMessageId: activeSessionId,
+        tokensUsed,
+        mode,
       })
     }
 
-    // Normal conversation - call OpenAI for response
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...conversationHistory,
-    ]
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
-      max_tokens: 1000,
-      temperature: 0.7,
-    })
-
-    const assistantResponse = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.'
-    const tokensUsed = completion.usage?.total_tokens || 0
-
-    // Save assistant response to database
-    const { data: assistantMessage, error: assistantMessageError } = await supabaseServer
-      .from('ai_chat_messages')
-      .insert({
-        session_id: activeSessionId,
-        user_id: user.id,
-        role: 'assistant',
-        content: assistantResponse,
-        metadata: { model: 'gpt-4o-mini' },
-        tokens_used: tokensUsed,
-      })
-      .select()
-      .single()
-
-    if (assistantMessageError) throw assistantMessageError
-
-    // Update session updated_at
-    await supabaseServer
-      .from('ai_chat_sessions')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', activeSessionId)
-
+    // Guest user response
     return NextResponse.json({
       type: 'message',
       response: assistantResponse,
-      sessionId: activeSessionId,
-      messageId: assistantMessage.id,
-      userMessageId: userMessage.id,
       tokensUsed,
+      mode,
     })
   } catch (error) {
     console.error('Chat API error:', error)

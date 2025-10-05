@@ -3,6 +3,8 @@
 import { X, MessageSquarePlus, ChevronDown, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useChatContext } from '@/lib/contexts/chat-context'
+import { useChatModeContext } from '@/lib/ai/context/chat-mode-context'
+import { ChatModeBadge } from './chat-mode-badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +19,7 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ onToggleSidebar }: ChatHeaderProps) {
   const { closeChat, clearHistory, createNewSession } = useChatContext()
+  const { modeConfig } = useChatModeContext()
 
   return (
     <div className="flex items-center justify-between border-b border-[#D1D5DB] bg-white p-3 dark:border-[#4E4F60] dark:bg-[#212121]">
@@ -31,18 +34,24 @@ export function ChatHeader({ onToggleSidebar }: ChatHeaderProps) {
         <Menu className="h-5 w-5" />
       </Button>
 
-      {/* Center - Model name with dropdown */}
+      {/* Center - Mode name with dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             className="flex items-center gap-1 text-[15px] font-medium text-[#353740] hover:bg-[#F7F7F8] dark:text-[#ECECF1] dark:hover:bg-[#2A2B32]"
           >
+            <span className="mr-1">{modeConfig.icon}</span>
             AI Assistant
             <ChevronDown className="h-4 w-4 text-[#6E6E80]" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center" className="w-48">
+          <DropdownMenuItem className="text-[13px]">
+            <span className="flex items-center gap-2">
+              <ChatModeBadge />
+            </span>
+          </DropdownMenuItem>
           <DropdownMenuItem className="text-[13px]">
             <span className="flex items-center gap-2">
               <span className="text-[#EA7317]">●</span>

@@ -5,6 +5,7 @@ import TextareaAutosize from 'react-textarea-autosize'
 import { Send, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useChatContext } from '@/lib/contexts/chat-context'
+import { useChatModeContext } from '@/lib/ai/context/chat-mode-context'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { VoiceInputButton } from './voice-input-button'
 import { VoiceRecordingModal } from './voice-recording-modal'
@@ -15,9 +16,10 @@ const MAX_LENGTH = 2000
 
 export function ChatInput() {
   const { sendMessage, isLoading, currentSession } = useChatContext()
+  const { modeConfig, canUseFeature } = useChatModeContext()
   const [input, setInput] = useState('')
 
-  // Voice input
+  // Voice input (only if feature is enabled)
   const voiceInput = useVoiceInput(currentSession?.id || '')
 
   const handleSend = async () => {
@@ -56,21 +58,23 @@ export function ChatInput() {
 
   return (
     <>
-      {/* Voice Recording Modal */}
-      <VoiceRecordingModal
-        isOpen={voiceInput.showRecordingModal}
-        onClose={voiceInput.cancelRecording}
-        duration={voiceInput.recordingDuration}
-        waveformData={voiceInput.waveformData}
-        onStop={voiceInput.stopAndTranscribe}
-        onCancel={voiceInput.cancelRecording}
-      />
+      {/* Voice Recording Modal - only if voice feature is enabled */}
+      {canUseFeature('voiceInput') && (
+        <VoiceRecordingModal
+          isOpen={voiceInput.showRecordingModal}
+          onClose={voiceInput.cancelRecording}
+          duration={voiceInput.recordingDuration}
+          waveformData={voiceInput.waveformData}
+          onStop={voiceInput.stopAndTranscribe}
+          onCancel={voiceInput.cancelRecording}
+        />
+      )}
 
       <div className="border-t border-[#D1D5DB] bg-white p-4 dark:border-[#4E4F60] dark:bg-[#212121]">
         <div className="mx-auto max-w-3xl">
           <div className="flex flex-col gap-2">
-            {/* Voice Transcript Card */}
-            {voiceInput.transcription && (
+            {/* Voice Transcript Card - only if voice feature is enabled */}
+            {canUseFeature('voiceInput') && voiceInput.transcription && (
               <VoiceTranscriptCard
                 transcription={voiceInput.transcription}
                 onConfirm={handleTranscriptConfirm}
@@ -106,7 +110,7 @@ export function ChatInput() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message AI Assistant..."
+                placeholder={modeConfig.placeholder}
                 className={cn(
                   'flex-1 resize-none border-0 bg-transparent text-[15px] text-[#353740] placeholder:text-[#9CA3AF]',
                   'focus:outline-none focus:ring-0',
@@ -118,8 +122,8 @@ export function ChatInput() {
                 disabled={isLoading}
               />
 
-              {/* Voice button (when no text) */}
-              {!input.trim() && (
+              {/* Voice button (when no text) - only if voice feature is enabled */}
+              {!input.trim() && canUseFeature('voiceInput') && (
                 <VoiceInputButton
                   status={voiceInput.isRecording ? 'recording' : voiceInput.isTranscribing ? 'processing' : 'idle'}
                   onClick={handleVoiceClick}

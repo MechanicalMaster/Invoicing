@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import supabase from '@/lib/supabase'
+import { useChatModeContext } from '@/lib/ai/context/chat-mode-context'
+import { usePathname } from 'next/navigation'
 
 export interface ChatMessage {
   id: string
@@ -55,6 +57,8 @@ interface ChatProviderProps {
 }
 
 export function ChatProvider({ children }: ChatProviderProps) {
+  const { currentMode } = useChatModeContext()
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -64,11 +68,18 @@ export function ChatProvider({ children }: ChatProviderProps) {
   const [offset, setOffset] = useState(0)
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // Load chat history when opening chat
+  // Load chat history when opening chat (only for authenticated users in assistant mode)
   const loadChatHistory = useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
+
+      // Guest mode (sales/help): No database history needed
+      if (currentMode !== 'assistant') {
+        setIsLoading(false)
+        setMessages([]) // Clear any existing messages
+        return
+      }
 
       // Get or create active session
       const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -177,7 +188,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [currentMode])
 
   const openChat = useCallback(() => {
     setIsOpen(true)
@@ -197,8 +208,8 @@ export function ChatProvider({ children }: ChatProviderProps) {
         return
       }
 
-      // If no session exists, load it first
-      if (!currentSession) {
+      // For assistant mode, ensure session exists
+      if (currentMode === 'assistant' && !currentSession) {
         await loadChatHistory()
         // Wait a bit for state to update, then retry
         setTimeout(() => {
@@ -214,7 +225,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
         content: content.trim(),
         timestamp: new Date(),
         status: 'sending',
-        sessionId: currentSession.id,
+        sessionId: currentSession?.id,
       }
 
       // Optimistically add user message
@@ -235,7 +246,11 @@ export function ChatProvider({ children }: ChatProviderProps) {
           },
           body: JSON.stringify({
             message: content.trim(),
-            sessionId: currentSession.id,
+            sessionId: currentSession?.id,
+            mode: currentMode,
+            context: {
+              currentPage: pathname,
+            },
           }),
         })
 
@@ -262,7 +277,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
           content: data.response,
           timestamp: new Date(),
           status: 'sent',
-          sessionId: currentSession.id,
+          sessionId: currentSession?.id,
           action: data.type === 'action' ? data.action : undefined,
           actionId: data.action?.id,
         }
@@ -286,7 +301,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
         setIsLoading(false)
       }
     },
-    [currentSession, loadChatHistory, isOpen]
+    [currentSession, loadChatHistory, isOpen, currentMode, pathname]
   )
 
   const retryMessage = useCallback(
