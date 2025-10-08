@@ -31,6 +31,7 @@ interface ChatContextType {
   error: string | null
   currentSession: ChatSession | null
   unreadCount: number
+  isAuthenticated: boolean
   openChat: () => void
   closeChat: () => void
   sendMessage: (content: string) => Promise<void>
@@ -67,6 +68,26 @@ export function ChatProvider({ children }: ChatProviderProps) {
   const [hasMore, setHasMore] = useState(false)
   const [offset, setOffset] = useState(0)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthenticated(!!user)
+    }
+
+    checkAuth()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session?.user)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
   // Load chat history when opening chat (only for authenticated users in assistant mode)
   const loadChatHistory = useCallback(async () => {
@@ -495,6 +516,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     error,
     currentSession,
     unreadCount,
+    isAuthenticated,
     openChat,
     closeChat,
     sendMessage,

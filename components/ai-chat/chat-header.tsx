@@ -18,21 +18,23 @@ interface ChatHeaderProps {
 }
 
 export function ChatHeader({ onToggleSidebar }: ChatHeaderProps) {
-  const { closeChat, clearHistory, createNewSession } = useChatContext()
+  const { closeChat, clearHistory, createNewSession, isAuthenticated } = useChatContext()
   const { modeConfig } = useChatModeContext()
 
   return (
     <div className="flex items-center justify-between border-b border-[#D1D5DB] bg-white p-3 dark:border-[#4E4F60] dark:bg-[#212121]">
-      {/* Left side - Menu */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onToggleSidebar}
-        className="h-9 w-9 text-[#6E6E80] hover:bg-[#F7F7F8] hover:text-[#353740] dark:hover:bg-[#2A2B32]"
-        aria-label="Menu"
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
+      {/* Left side - Menu (only show for authenticated users) */}
+      {isAuthenticated && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleSidebar}
+          className="h-9 w-9 text-[#6E6E80] hover:bg-[#F7F7F8] hover:text-[#353740] dark:hover:bg-[#2A2B32]"
+          aria-label="Menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
 
       {/* Center - Mode name with dropdown */}
       <DropdownMenu>

@@ -126,7 +126,7 @@ export default function PurchasesPage() {
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/purchases/invoices/add">
+              <Link href="/purchases/invoices/upload-bill">
                 <FileText className="mr-2 h-4 w-4" />
                 Upload Bill Photo
               </Link>

@@ -7,7 +7,7 @@
 export type LogLevel = 'info' | 'warn' | 'error';
 
 // Entity types
-export type AuditEntity = 'inventory' | 'file' | 'user' | 'notification' | 'customer' | 'invoice' | 'supplier' | 'purchase' | 'stock' | 'voice_transcription';
+export type AuditEntity = 'inventory' | 'file' | 'user' | 'notification' | 'customer' | 'invoice' | 'supplier' | 'purchase' | 'stock' | 'voice_transcription' | 'bill_extraction';
 
 // Common audit actions
 export type AuditAction =
