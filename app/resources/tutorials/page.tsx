@@ -71,7 +71,7 @@ export default function TutorialsPage() {
       <div className="mb-8">
         <h1 className="mb-2 text-3xl font-bold text-amber-800">Tutorials</h1>
         <p className="text-lg text-muted-foreground">
-          Step-by-step video guides to help you make the most of Ratna Invoicing
+          Step-by-step video guides to help you make the most of Sethiya Gold
         </p>
       </div>
 

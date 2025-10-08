@@ -92,6 +92,14 @@ export default function StockItemDetailPage() {
       }
 
       if (data) {
+        // Convert image paths to full Supabase URLs
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const imageUrls = data.image_urls && data.image_urls.length > 0
+          ? data.image_urls.map((path: string) =>
+              `${supabaseUrl}/storage/v1/object/public/stock_item_images/${path}`
+            )
+          : ["/placeholder.svg?height=600&width=600"]
+
         // Map Supabase data to the format expected by UI
         const mappedItem = {
           id: data.item_number,
@@ -103,9 +111,7 @@ export default function StockItemDetailPage() {
           makingCharges: 0, // Not in schema, default to 0
           price: data.purchase_price,
           stock: 1, // Assuming each row is one item
-          images: data.image_urls && data.image_urls.length > 0 
-            ? data.image_urls 
-            : ["/placeholder.svg?height=600&width=600"],
+          images: imageUrls,
           description: data.description || `${data.material} ${data.category} (${data.purity || 'N/A'})`,
           dateAdded: new Date(data.created_at),
           supplier: data.supplier || 'Not specified',
@@ -417,7 +423,7 @@ export default function StockItemDetailPage() {
         </nav>
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center">
             <Link href="/stock">
               <Button variant="ghost" size="sm" className="gap-1">
@@ -427,18 +433,20 @@ export default function StockItemDetailPage() {
             </Link>
             <h1 className="ml-4 text-xl font-semibold md:text-2xl">{itemData.name}</h1>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={handlePrintLabel} className="gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handlePrintLabel} size="sm" className="gap-2">
               <Printer className="h-4 w-4" />
-              Print Label
+              <span className="hidden sm:inline">Print Label</span>
+              <span className="sm:hidden">Print</span>
             </Button>
 
             {!itemData.is_sold ? (
               <ConfirmDialog
                 trigger={
-                  <Button className="gap-2" variant="outline" disabled={isMarkingAsSold}>
+                  <Button size="sm" className="gap-2" variant="outline" disabled={isMarkingAsSold}>
                     <ShoppingBag className="h-4 w-4" />
-                    {isMarkingAsSold ? "Processing..." : "Mark as Sold"}
+                    <span className="hidden sm:inline">{isMarkingAsSold ? "Processing..." : "Mark as Sold"}</span>
+                    <span className="sm:hidden">Sold</span>
                   </Button>
                 }
                 title="Mark Item as Sold"
@@ -449,9 +457,10 @@ export default function StockItemDetailPage() {
             ) : (
               <ConfirmDialog
                 trigger={
-                  <Button className="gap-2" variant="outline" disabled={isMarkingAsSold}>
+                  <Button size="sm" className="gap-2" variant="outline" disabled={isMarkingAsSold}>
                     <Tag className="h-4 w-4" />
-                    {isMarkingAsSold ? "Processing..." : "Return to Stock"}
+                    <span className="hidden sm:inline">{isMarkingAsSold ? "Processing..." : "Return to Stock"}</span>
+                    <span className="sm:hidden">Restock</span>
                   </Button>
                 }
                 title="Return Item to Stock"
@@ -463,9 +472,10 @@ export default function StockItemDetailPage() {
 
             <ConfirmDialog
               trigger={
-                <Button className="gap-2" variant="destructive" disabled={isDeleting}>
+                <Button size="sm" className="gap-2" variant="destructive" disabled={isDeleting}>
                   <Trash2 className="h-4 w-4" />
-                  {isDeleting ? "Deleting..." : "Delete Item"}
+                  <span className="hidden sm:inline">{isDeleting ? "Deleting..." : "Delete Item"}</span>
+                  <span className="sm:hidden">Delete</span>
                 </Button>
               }
               title="Delete Item"
@@ -476,9 +486,10 @@ export default function StockItemDetailPage() {
             />
 
             <Link href={`/stock/${itemId}/edit`}>
-              <Button className="gap-2">
+              <Button size="sm" className="gap-2">
                 <Edit className="h-4 w-4" />
-                Edit Item
+                <span className="hidden sm:inline">Edit Item</span>
+                <span className="sm:hidden">Edit</span>
               </Button>
             </Link>
           </div>

@@ -664,7 +664,7 @@ export default function EditPurchaseInvoicePage({ params }: { params: Promise<{ 
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push(`/purchases/invoices/${invoiceId}`)}
+                  onClick={() => router.push(`/purchases?tab=invoices`)}
                   disabled={isSubmitting}
                 >
                   Cancel

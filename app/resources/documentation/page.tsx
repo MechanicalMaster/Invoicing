@@ -12,7 +12,7 @@ export default function DocumentationPage() {
       <div className="mb-8">
         <h1 className="mb-2 text-3xl font-bold text-amber-800">Documentation</h1>
         <p className="text-lg text-muted-foreground">
-          Comprehensive guides and reference materials for Ratna Invoicing
+          Comprehensive guides and reference materials for Sethiya Gold
         </p>
       </div>
 

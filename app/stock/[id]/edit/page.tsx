@@ -111,13 +111,17 @@ export default function EditStockItemPage() {
 
         setItemNumber(data.item_number)
 
-        // Handle existing images
+        // Handle existing images - convert paths to full Supabase URLs
         if (data.image_urls && data.image_urls.length > 0) {
-          const existingImages = data.image_urls.map((url: string) => ({
-            preview: url,
-            existingUrl: url,
-            toBeDeleted: false
-          }))
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+          const existingImages = data.image_urls.map((path: string) => {
+            const fullUrl = `${supabaseUrl}/storage/v1/object/public/stock_item_images/${path}`
+            return {
+              preview: fullUrl,
+              existingUrl: path, // Keep the original path for database storage
+              toBeDeleted: false
+            }
+          })
           setImages(existingImages)
         } else {
           setImages([{ preview: "/placeholder.svg?height=300&width=300" }])
@@ -322,8 +326,8 @@ export default function EditStockItemPage() {
           }
 
           const uploadResult = await response.json()
-          // Return path in URL format for backward compatibility
-          return `stock_item_images/${uploadResult.path}`
+          // Return just the path without bucket name (bucket is specified when constructing URLs)
+          return uploadResult.path
         })
 
       try {
@@ -457,10 +461,10 @@ export default function EditStockItemPage() {
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
-          <Link href={`/stock/${itemId}`}>
+          <Link href="/stock">
             <Button variant="ghost" size="sm" className="gap-1">
               <ArrowLeft className="h-4 w-4" />
-              Back to Item
+              Back to Stock
             </Button>
           </Link>
           <h1 className="ml-4 text-xl font-semibold md:text-2xl">Edit Inventory Item</h1>
@@ -706,7 +710,7 @@ export default function EditStockItemPage() {
             </CardContent>
 
             <CardFooter className="flex justify-between">
-              <Link href={`/stock/${itemId}`}>
+              <Link href="/stock">
                 <Button variant="outline" type="button">
                   Cancel
                 </Button>

@@ -96,7 +96,6 @@ export default function CustomersPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Customer Management</h1>
-            <p className="text-muted-foreground">Manage your customer relationships and information</p>
           </div>
           <Link href="/customers/add">
             <Button className="bg-primary hover:bg-primary/90">

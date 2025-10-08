@@ -100,6 +100,9 @@ export default function StockPage() {
       }
       
       if (data) {
+        // Convert image paths to full Supabase URLs
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+
         // Map the data to the format expected by the components
         const mappedItems = data.map(item => ({
           id: item.item_number,
@@ -112,8 +115,10 @@ export default function StockPage() {
           price: item.purchase_price,
           purchasePrice: item.purchase_price,
           stock: 1, // Assuming each row is one item
-          images: item.image_urls && item.image_urls.length > 0 
-            ? item.image_urls 
+          images: item.image_urls && item.image_urls.length > 0
+            ? item.image_urls.map((path: string) =>
+                `${supabaseUrl}/storage/v1/object/public/stock_item_images/${path}`
+              )
             : ["/placeholder.svg?height=300&width=300"],
           description: item.description || `${item.material} ${item.category} (${item.purity || 'N/A'})`,
           dateAdded: new Date(item.created_at),
@@ -143,7 +148,10 @@ export default function StockPage() {
   const processStockData = (items: Database['public']['Tables']['stock_items']['Row'][]) => {
     // Create a map to count items by category
     const categoryCount: Record<string, number> = {}
-    
+
+    // Convert image paths to full Supabase URLs
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+
     // Process each item
     const processedItems = items.map(item => {
       // Count by category
@@ -152,7 +160,7 @@ export default function StockPage() {
       } else {
         categoryCount[item.category] = 1
       }
-      
+
       // Map item to expected format for StockItemCard and StockItemTable
       return {
         id: item.item_number,
@@ -164,8 +172,10 @@ export default function StockPage() {
         makingCharges: 0, // Not in schema, using default
         price: item.purchase_price,
         stock: 1, // Assuming each row is one item
-        images: item.image_urls && item.image_urls.length > 0 
-          ? item.image_urls 
+        images: item.image_urls && item.image_urls.length > 0
+          ? item.image_urls.map((path: string) =>
+              `${supabaseUrl}/storage/v1/object/public/stock_item_images/${path}`
+            )
           : ["/placeholder.svg?height=300&width=300"],
         description: item.description || `${item.material} ${item.category} (${item.purity || 'N/A'})`,
         dateAdded: new Date(item.created_at)

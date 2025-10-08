@@ -19,7 +19,7 @@ export default function FAQPage() {
     },
     {
       question: "Can I customize my invoice template?",
-      answer: "Yes, Ratna Invoicing allows full customization of invoice templates. Go to 'Settings > Invoice Templates' to add your shop logo, change colors, adjust layouts, and set default terms and conditions. You can create multiple templates for different types of sales or seasons.",
+      answer: "Yes, Sethiya Gold allows full customization of invoice templates. Go to 'Settings > Invoice Templates' to add your shop logo, change colors, adjust layouts, and set default terms and conditions. You can create multiple templates for different types of sales or seasons.",
     },
     {
       question: "How does gold rate tracking work?",
@@ -35,7 +35,7 @@ export default function FAQPage() {
     },
     {
       question: "What payment methods are supported?",
-      answer: "Ratna Invoicing supports various payment methods including cash, credit/debit cards, UPI, bank transfers, and partial payments. You can configure these options in 'Settings > Payment Methods' and track outstanding balances for customers who make partial payments.",
+      answer: "Sethiya Gold supports various payment methods including cash, credit/debit cards, UPI, bank transfers, and partial payments. You can configure these options in 'Settings > Payment Methods' and track outstanding balances for customers who make partial payments.",
     },
     {
       question: "Can I generate reports for my business?",
@@ -52,7 +52,7 @@ export default function FAQPage() {
       <div className="mb-8">
         <h1 className="mb-2 text-3xl font-bold text-amber-800">Frequently Asked Questions</h1>
         <p className="text-lg text-muted-foreground">
-          Find answers to common questions about Ratna Invoicing
+          Find answers to common questions about Sethiya Gold
         </p>
       </div>
 

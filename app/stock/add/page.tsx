@@ -216,8 +216,8 @@ export default function AddStockItemPage() {
           }
 
           const uploadResult = await response.json()
-          // Return path in URL format for backward compatibility
-          return `stock_item_images/${uploadResult.path}`;
+          // Return just the path without bucket name (bucket is specified when constructing URLs)
+          return uploadResult.path;
         });
 
       try {

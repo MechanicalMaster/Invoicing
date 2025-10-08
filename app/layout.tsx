@@ -9,6 +9,7 @@ import { ChatModeProvider } from '@/lib/ai/context/chat-mode-context'
 import { Toaster } from "@/components/ui/toaster"
 import { ChatFloatingButton } from '@/components/ai-chat/chat-floating-button'
 import { ChatPanel } from '@/components/ai-chat/chat-panel'
+import { RouteLogger } from '@/components/route-logger'
 import { cn } from "@/lib/utils"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -32,6 +33,7 @@ export default function RootLayout({
             <NotificationProvider>
               <ChatModeProvider>
                 <ChatProvider>
+                  <RouteLogger />
                   {children}
                   <ChatFloatingButton />
                   <ChatPanel />

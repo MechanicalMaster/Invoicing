@@ -8,7 +8,7 @@ export default function ResourcesPage() {
   const resourceCards = [
     {
       title: "Documentation",
-      description: "Comprehensive guides and references for Ratna Invoicing",
+      description: "Comprehensive guides and references for Sethiya Gold",
       icon: BookOpen,
       href: "/resources/documentation",
       color: "bg-amber-50 text-amber-600",

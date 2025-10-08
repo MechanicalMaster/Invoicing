@@ -131,7 +131,7 @@ export function AuthModal({ children }: { children: React.ReactNode }) {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-center font-serif text-2xl font-bold text-amber-800">
-            Welcome to Ratna Invoicing
+            Welcome to Sethiya Gold
           </DialogTitle>
           <DialogDescription className="text-center">Access your jewelry shop management system</DialogDescription>
         </DialogHeader>

@@ -368,7 +368,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <FileText className="h-6 w-6 text-primary" />
-          <span className="text-xl">Ratna Invoicing</span>
+          <span className="text-xl">Sethiya Gold</span>
         </Link>
         <nav className="ml-auto flex items-center gap-4">
           <Link href="/dashboard">
@@ -381,10 +381,10 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
-          <Link href={`/customers/${customerId}`}>
+          <Link href="/customers">
             <Button variant="ghost" size="sm" className="gap-1">
               <ArrowLeft className="h-4 w-4" />
-              Back to Customer
+              Back to Customers
             </Button>
           </Link>
           <h1 className="ml-4 text-xl font-semibold md:text-2xl">Edit Customer</h1>
@@ -629,7 +629,7 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
           </div>
 
           <div className="mt-6 flex justify-end gap-4">
-            <Link href={`/customers/${customerId}`}>
+            <Link href="/customers">
               <Button variant="outline">Cancel</Button>
             </Link>
             <Button

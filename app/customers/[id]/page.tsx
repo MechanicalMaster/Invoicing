@@ -244,7 +244,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <FileText className="h-6 w-6 text-primary" />
-          <span className="text-xl">Ratna Invoicing</span>
+          <span className="text-xl">Sethiya Gold</span>
         </Link>
         <nav className="ml-auto flex items-center gap-4">
           <Link href="/dashboard">

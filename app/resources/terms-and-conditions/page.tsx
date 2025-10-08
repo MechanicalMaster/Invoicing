@@ -11,7 +11,7 @@ export default function TermsAndConditionsPage() {
       <div className="mb-8">
         <h1 className="mb-2 text-3xl font-bold text-amber-800">Terms and Conditions</h1>
         <p className="text-lg text-muted-foreground">
-          Please read these terms carefully before using Ratna Invoicing
+          Please read these terms carefully before using Sethiya Gold
         </p>
       </div>
 
@@ -21,13 +21,13 @@ export default function TermsAndConditionsPage() {
         </CardHeader>
         <CardContent className="prose prose-amber max-w-none">
           <p>
-            Welcome to Ratna Invoicing. By accessing or using our service, you agree to be bound by these Terms and Conditions. 
+            Welcome to Sethiya Gold. By accessing or using our service, you agree to be bound by these Terms and Conditions.
             If you disagree with any part of these terms, you may not access the service.
           </p>
 
           <h3>1. License to Use</h3>
           <p>
-            Ratna Tech Solutions grants you a limited, non-exclusive, non-transferable license to use Ratna Invoicing software 
+            Sethiya Tech Solutions grants you a limited, non-exclusive, non-transferable license to use Sethiya Gold software
             for your jewelry business operations. This license is subject to these Terms and Conditions.
           </p>
 
@@ -40,15 +40,15 @@ export default function TermsAndConditionsPage() {
 
           <h3>3. Data Privacy</h3>
           <p>
-            Your use of the service is also governed by our Privacy Policy, which outlines how we collect, use, and protect your 
-            personal information and business data. By using Ratna Invoicing, you consent to the data practices described in 
+            Your use of the service is also governed by our Privacy Policy, which outlines how we collect, use, and protect your
+            personal information and business data. By using Sethiya Gold, you consent to the data practices described in
             the Privacy Policy.
           </p>
 
           <h3>4. Subscription and Billing</h3>
           <p>
-            Some features of Ratna Invoicing require a paid subscription. Billing occurs according to the plan you select, 
-            and you agree to pay all fees associated with your subscription. We reserve the right to change subscription fees 
+            Some features of Sethiya Gold require a paid subscription. Billing occurs according to the plan you select,
+            and you agree to pay all fees associated with your subscription. We reserve the right to change subscription fees
             upon reasonable notice.
           </p>
 
