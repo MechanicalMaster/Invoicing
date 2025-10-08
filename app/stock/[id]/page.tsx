@@ -92,13 +92,37 @@ export default function StockItemDetailPage() {
       }
 
       if (data) {
-        // Convert image paths to full Supabase URLs
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-        const imageUrls = data.image_urls && data.image_urls.length > 0
-          ? data.image_urls.map((path: string) =>
-              `${supabaseUrl}/storage/v1/object/public/stock_item_images/${path}`
-            )
-          : ["/placeholder.svg?height=600&width=600"]
+        // Generate signed URLs for images (private bucket)
+        let imageUrls = ["/placeholder.svg?height=600&width=600"];
+
+        if (data.image_urls && data.image_urls.length > 0) {
+          try {
+            // Get signed URLs for all images
+            const signedUrlPromises = data.image_urls.map(async (path: string) => {
+              const { data: signedData, error: signedError } = await supabase.storage
+                .from('stock_item_images')
+                .createSignedUrl(path, 3600); // 1 hour expiry
+
+              if (signedError) {
+                console.error('Error creating signed URL for path:', path, signedError);
+                return "/placeholder.svg?height=600&width=600";
+              }
+
+              return signedData.signedUrl;
+            });
+
+            const resolvedUrls = await Promise.all(signedUrlPromises);
+            imageUrls = resolvedUrls.filter(url => url && !url.includes('placeholder'));
+
+            // If all failed, use placeholder
+            if (imageUrls.length === 0) {
+              imageUrls = ["/placeholder.svg?height=600&width=600"];
+            }
+          } catch (urlError) {
+            console.error('Error generating signed URLs:', urlError);
+            // Fall back to placeholder on error
+          }
+        }
 
         // Map Supabase data to the format expected by UI
         const mappedItem = {
@@ -135,7 +159,7 @@ export default function StockItemDetailPage() {
           // Keep a reference to the original data
           _original: data
         }
-        
+
         setItemData(mappedItem)
       } else {
         setError("Item not found")

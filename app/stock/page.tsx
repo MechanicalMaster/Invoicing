@@ -100,33 +100,47 @@ export default function StockPage() {
       }
       
       if (data) {
-        // Convert image paths to full Supabase URLs
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        // Generate signed URLs for images (private bucket)
+        const mappedItemsPromises = data.map(async (item) => {
+          let imageUrls = ["/placeholder.svg?height=300&width=300"];
 
-        // Map the data to the format expected by the components
-        const mappedItems = data.map(item => ({
-          id: item.item_number,
-          name: item.description || `${item.material} ${item.category}`,
-          category: item.category,
-          material: item.material,
-          purity: item.purity || 'N/A',
-          weight: item.weight,
-          makingCharges: 0, // Not in database, default to 0
-          price: item.purchase_price,
-          purchasePrice: item.purchase_price,
-          stock: 1, // Assuming each row is one item
-          images: item.image_urls && item.image_urls.length > 0
-            ? item.image_urls.map((path: string) =>
-                `${supabaseUrl}/storage/v1/object/public/stock_item_images/${path}`
-              )
-            : ["/placeholder.svg?height=300&width=300"],
-          description: item.description || `${item.material} ${item.category} (${item.purity || 'N/A'})`,
-          dateAdded: new Date(item.created_at),
-          is_sold: item.is_sold,
-          sold_at: item.sold_at,
-          supplier: item.supplier
-        }));
-        
+          if (item.image_urls && item.image_urls.length > 0) {
+            try {
+              // Get the first image only for listing performance
+              const firstImagePath = item.image_urls[0];
+              const { data: signedData, error: signedError } = await supabase.storage
+                .from('stock_item_images')
+                .createSignedUrl(firstImagePath, 3600); // 1 hour expiry
+
+              if (!signedError && signedData) {
+                imageUrls = [signedData.signedUrl];
+              }
+            } catch (urlError) {
+              console.error('Error generating signed URL for item:', item.item_number, urlError);
+            }
+          }
+
+          return {
+            id: item.item_number,
+            name: item.description || `${item.material} ${item.category}`,
+            category: item.category,
+            material: item.material,
+            purity: item.purity || 'N/A',
+            weight: item.weight,
+            makingCharges: 0, // Not in database, default to 0
+            price: item.purchase_price,
+            purchasePrice: item.purchase_price,
+            stock: 1, // Assuming each row is one item
+            images: imageUrls,
+            description: item.description || `${item.material} ${item.category} (${item.purity || 'N/A'})`,
+            dateAdded: new Date(item.created_at),
+            is_sold: item.is_sold,
+            sold_at: item.sold_at,
+            supplier: item.supplier
+          };
+        });
+
+        const mappedItems = await Promise.all(mappedItemsPromises);
         setStockItems(mappedItems);
       } else {
         setStockItems([]);

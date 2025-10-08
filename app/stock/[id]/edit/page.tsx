@@ -111,18 +111,27 @@ export default function EditStockItemPage() {
 
         setItemNumber(data.item_number)
 
-        // Handle existing images - convert paths to full Supabase URLs
+        // Handle existing images - generate signed URLs for private bucket
         if (data.image_urls && data.image_urls.length > 0) {
-          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-          const existingImages = data.image_urls.map((path: string) => {
-            const fullUrl = `${supabaseUrl}/storage/v1/object/public/stock_item_images/${path}`
-            return {
-              preview: fullUrl,
-              existingUrl: path, // Keep the original path for database storage
-              toBeDeleted: false
-            }
-          })
-          setImages(existingImages)
+          try {
+            const imagePromises = data.image_urls.map(async (path: string) => {
+              const { data: signedData, error: signedError } = await supabase.storage
+                .from('stock_item_images')
+                .createSignedUrl(path, 3600); // 1 hour expiry
+
+              return {
+                preview: signedError ? "/placeholder.svg?height=300&width=300" : signedData.signedUrl,
+                existingUrl: path, // Keep the original path for database storage
+                toBeDeleted: false
+              };
+            });
+
+            const existingImages = await Promise.all(imagePromises);
+            setImages(existingImages);
+          } catch (urlError) {
+            console.error('Error generating signed URLs:', urlError);
+            setImages([{ preview: "/placeholder.svg?height=300&width=300" }]);
+          }
         } else {
           setImages([{ preview: "/placeholder.svg?height=300&width=300" }])
         }
