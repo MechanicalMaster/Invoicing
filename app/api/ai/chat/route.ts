@@ -11,6 +11,7 @@ import { buildSalesPrompt } from '@/lib/ai/modes/prompts/sales-prompt'
 import { buildAssistantPrompt } from '@/lib/ai/modes/prompts/assistant-prompt'
 import { buildHelpPrompt } from '@/lib/ai/modes/prompts/help-prompt'
 import { ChatMode } from '@/lib/ai/modes/types'
+import { filterContent, filterAssistantResponse } from '@/lib/ai/security/content-filter'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -78,6 +79,23 @@ export async function POST(request: NextRequest) {
       } = await supabaseClient.auth.getUser(token)
 
       user = authUser
+    }
+
+    // SECURITY: Content filtering for harmful/malicious input
+    const contentCheck = filterContent(message)
+    if (!contentCheck.safe) {
+      console.warn(`Content filter blocked message: ${contentCheck.category}`, {
+        userId: user?.id || 'guest',
+        reason: contentCheck.reason,
+      })
+      return NextResponse.json(
+        {
+          error: contentCheck.reason,
+          filtered: true,
+          category: contentCheck.category
+        },
+        { status: 400 }
+      )
     }
 
     // Validate mode vs authentication state
@@ -292,23 +310,39 @@ export async function POST(request: NextRequest) {
       conversationHistory = []
     }
 
-    // Normal conversation - call OpenAI
+    // Normal conversation - call OpenAI with timeout
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
       ...conversationHistory,
       { role: 'user', content: message },
     ]
 
-    const completion = await openai.chat.completions.create({
+    // SECURITY: Add timeout to prevent long-running requests
+    const timeoutMs = 30000 // 30 seconds
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('AI request timeout')), timeoutMs)
+    )
+
+    const completionPromise = openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages,
       max_tokens: mode === 'sales' ? 500 : 1000,
       temperature: mode === 'sales' ? 0.8 : 0.7, // More creative for sales
     })
 
-    const assistantResponse =
+    const completion = await Promise.race([completionPromise, timeoutPromise]).catch((error) => {
+      if (error.message === 'AI request timeout') {
+        throw new Error('Request took too long. Please try again with a simpler question.')
+      }
+      throw error
+    })
+
+    let assistantResponse =
       completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.'
     const tokensUsed = completion.usage?.total_tokens || 0
+
+    // SECURITY: Filter assistant response for PII leakage
+    assistantResponse = filterAssistantResponse(assistantResponse, user?.id || 'guest')
 
     // Save to database only for authenticated users
     if (user && mode === 'assistant' && activeSessionId) {

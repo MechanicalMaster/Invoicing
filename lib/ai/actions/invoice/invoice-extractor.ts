@@ -4,6 +4,7 @@ import OpenAI from 'openai'
 import { AIAction } from '../types'
 import { InvoiceActionData } from './invoice-action-schema'
 import { ACTION_CAPABLE_SYSTEM_PROMPT } from '@/lib/ai/prompts/system-prompts'
+import { DEFAULT_BATCH_LIMITS } from '@/lib/ai/security/content-filter'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -121,6 +122,13 @@ export async function extractInvoiceAction(
   // Check if AI decided to call the create_invoice function
   if (message.function_call?.name === 'create_invoice') {
     const rawData = JSON.parse(message.function_call.arguments)
+
+    // SECURITY: Enforce batch limits on items per invoice
+    if (rawData.items && rawData.items.length > DEFAULT_BATCH_LIMITS.maxItemsPerInvoice) {
+      throw new Error(
+        `Too many items in invoice. Maximum ${DEFAULT_BATCH_LIMITS.maxItemsPerInvoice} items allowed per invoice. You requested ${rawData.items.length} items.`
+      )
+    }
 
     // Calculate totals for each item
     const itemsWithTotals = rawData.items.map((item: any) => ({

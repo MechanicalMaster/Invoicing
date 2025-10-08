@@ -282,16 +282,26 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
         const data = await response.json()
 
-        // Update user message status
-        setMessages((prev) =>
-          prev.map((msg) =>
+        // Update user message status and prevent duplicates
+        setMessages((prev) => {
+          const newUserId = data.userMessageId || tempId
+          // Check if the new ID already exists (excluding the temp ID)
+          const existsWithNewId = prev.some((msg) => msg.id === newUserId && msg.id !== tempId)
+
+          if (existsWithNewId) {
+            // Remove the temp message since the real one already exists
+            return prev.filter((msg) => msg.id !== tempId)
+          }
+
+          // Update the temp message with the real ID
+          return prev.map((msg) =>
             msg.id === tempId
-              ? { ...msg, id: data.userMessageId || msg.id, status: 'sent' as const }
+              ? { ...msg, id: newUserId, status: 'sent' as const }
               : msg
           )
-        )
+        })
 
-        // Add assistant response
+        // Add assistant response (check for duplicates first)
         const assistantMessage: ChatMessage = {
           id: data.messageId,
           role: 'assistant',
@@ -303,7 +313,17 @@ export function ChatProvider({ children }: ChatProviderProps) {
           actionId: data.action?.id,
         }
 
-        setMessages((prev) => [...prev, assistantMessage])
+        setMessages((prev) => {
+          // Check if message already exists
+          const exists = prev.some((msg) => msg.id === data.messageId)
+          if (exists) {
+            // Update existing message instead of adding duplicate
+            return prev.map((msg) =>
+              msg.id === data.messageId ? assistantMessage : msg
+            )
+          }
+          return [...prev, assistantMessage]
+        })
 
         // If chat is closed, increment unread count
         if (!isOpen) {
