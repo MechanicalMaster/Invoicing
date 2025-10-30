@@ -11,12 +11,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Building } from "lucide-react"
-import supabase from "@/lib/supabase"
+import { useSuppliers } from "@/lib/hooks/useSuppliers"
 
 export default function AddSupplierPage() {
   const { user, isLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const { createSupplier } = useSuppliers({ autoFetch: false })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
@@ -34,7 +35,7 @@ export default function AddSupplierPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!user) {
       toast({
         title: "Authentication required",
@@ -56,18 +57,17 @@ export default function AddSupplierPage() {
     setIsSubmitting(true)
 
     try {
-      const { data, error } = await supabase.from("suppliers").insert({
-        ...formData,
-        user_id: user.id,
-      })
+      const newSupplier = await createSupplier(formData)
 
-      if (error) throw error
+      if (!newSupplier) {
+        throw new Error("Failed to create supplier")
+      }
 
       toast({
         title: "Supplier added successfully",
         description: `${formData.name} has been added to your suppliers list`,
       })
-      
+
       router.push("/purchases?tab=suppliers")
     } catch (error: any) {
       console.error("Error adding supplier:", error)

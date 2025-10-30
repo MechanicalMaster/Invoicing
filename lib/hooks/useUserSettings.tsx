@@ -1,38 +1,33 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { apiClient, apiPatch, apiPost } from '@/lib/api/client'
 import { Tables } from '@/lib/database.types'
 
 type UserSettings = Tables<'user_settings'> | null
 
 export default function useUserSettings() {
-  const supabase = createClientComponentClient()
   const [settings, setSettings] = useState<UserSettings>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchSettings = async () => {
     setLoading(true)
+    setError(null)
+
     try {
-      const { data: user } = await supabase.auth.getUser()
-      if (!user.user) {
+      const response = await apiClient<UserSettings>('/settings')
+
+      if (response.error) {
+        setError(response.error)
         setSettings(null)
-        return
+      } else {
+        setSettings(response.data || null)
       }
-
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user.user.id)
-        .single()
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching user settings:', error)
-      }
-
-      setSettings(data || null)
-    } catch (error) {
-      console.error('Error in useUserSettings:', error)
+    } catch (err: any) {
+      console.error('Error in useUserSettings:', err)
+      setError(err.message || 'Failed to fetch settings')
+      setSettings(null)
     } finally {
       setLoading(false)
     }
@@ -40,51 +35,47 @@ export default function useUserSettings() {
 
   const updateSettings = async (updates: Partial<Tables<'user_settings'>>) => {
     try {
-      const { data: user } = await supabase.auth.getUser()
-      if (!user.user) return null
+      const response = await apiPatch<UserSettings>('/settings', updates)
 
-      // If settings exist, update them
-      if (settings) {
-        const { data, error } = await supabase
-          .from('user_settings')
-          .update({
-            ...updates,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.user.id)
-          .select()
-          .single()
-
-        if (error) {
-          console.error('Error updating user settings:', error)
-          return null
-        }
-
-        setSettings(data)
-        return data
-      } 
-      // If settings don't exist, create them
-      else {
-        const { data, error } = await supabase
-          .from('user_settings')
-          .insert({
-            user_id: user.user.id,
-            ...updates,
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single()
-
-        if (error) {
-          console.error('Error creating user settings:', error)
-          return null
-        }
-
-        setSettings(data)
-        return data
+      if (response.error) {
+        console.error('Error updating user settings:', response.error)
+        setError(response.error)
+        return null
       }
-    } catch (error) {
-      console.error('Error in updateSettings:', error)
+
+      if (response.data) {
+        setSettings(response.data)
+        return response.data
+      }
+
+      return null
+    } catch (err: any) {
+      console.error('Error in updateSettings:', err)
+      setError(err.message || 'Failed to update settings')
+      return null
+    }
+  }
+
+  const incrementInvoiceNumber = async () => {
+    try {
+      const response = await apiPost<{ currentNumber: number; nextNumber: number }>(
+        '/settings/invoice-number',
+        {}
+      )
+
+      if (response.error) {
+        console.error('Error incrementing invoice number:', response.error)
+        setError(response.error)
+        return null
+      }
+
+      // Refresh settings to get updated invoice number
+      await fetchSettings()
+
+      return response.data
+    } catch (err: any) {
+      console.error('Error in incrementInvoiceNumber:', err)
+      setError(err.message || 'Failed to increment invoice number')
       return null
     }
   }
@@ -93,5 +84,12 @@ export default function useUserSettings() {
     fetchSettings()
   }, [])
 
-  return { settings, loading, updateSettings, refreshSettings: fetchSettings }
+  return {
+    settings,
+    loading,
+    error,
+    updateSettings,
+    refreshSettings: fetchSettings,
+    incrementInvoiceNumber,
+  }
 } 

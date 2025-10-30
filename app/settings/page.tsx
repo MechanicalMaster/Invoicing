@@ -14,8 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { toast } from "@/components/ui/use-toast"
 import { useAuth } from "@/components/auth-provider"
-import supabase from "@/lib/supabase"
 import { Textarea } from "@/components/ui/textarea"
+import { apiClient, apiPatch } from "@/lib/api/client"
 
 export default function SettingsPage() {
   const { user, isLoading } = useAuth();
@@ -74,11 +74,9 @@ export default function SettingsPage() {
       
       try {
         setIsSettingsLoading(true);
-        const { data, error } = await supabase
-          .from('user_settings')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+        const response = await apiClient<any>('/settings');
+        const data = response.data;
+        const error = response.error ? { code: 'ERROR', message: response.error } : null;
         
         if (error) {
           // If error is not 'no rows returned', show error
@@ -238,10 +236,9 @@ export default function SettingsPage() {
         photo_compression_level: photoSettings.compressionLevel as "low" | "medium" | "high" | "none",
       };
       
-      // Save settings to Supabase
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert(settingsPayload, { onConflict: 'user_id' });
+      // Save settings via API
+      const response = await apiPatch('/settings', settingsPayload);
+      const error = response.error;
       
       if (error) {
         console.error('Error saving settings:', error);

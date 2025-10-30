@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation"
 import supabase from "@/lib/supabase"
 import { Tables } from "@/lib/database.types"
 import SupplierCard from "./components/supplier-card"
+import { useSuppliers } from "@/lib/hooks/useSuppliers"
 
 type PurchaseInvoice = Tables<"purchase_invoices"> & {
   suppliers?: {
@@ -34,9 +35,19 @@ export default function PurchasesPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all")
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([])
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierSearch, setSupplierSearch] = useState("")
   const [loading, setLoading] = useState(true)
+
+  // Use new API for suppliers
+  const {
+    suppliers,
+    loading: suppliersLoading,
+    error: suppliersError,
+    refetch: refetchSuppliers
+  } = useSuppliers({
+    search: supplierSearch,
+    autoFetch: activeTab === "suppliers"
+  })
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -56,7 +67,7 @@ export default function PurchasesPage() {
 
   const fetchData = async () => {
     if (!user) return
-    
+
     setLoading(true)
     try {
       if (activeTab === "invoices") {
@@ -68,13 +79,8 @@ export default function PurchasesPage() {
         if (invoicesError) throw invoicesError
         setPurchaseInvoices(invoices as PurchaseInvoice[] || [])
       } else if (activeTab === "suppliers") {
-        const { data: suppliersData, error: suppliersError } = await supabase
-          .from("suppliers")
-          .select("*")
-          .eq("user_id", user.id)
-
-        if (suppliersError) throw suppliersError
-        setSuppliers(suppliersData as Supplier[] || [])
+        // Suppliers now fetched via useSuppliers hook
+        await refetchSuppliers()
       }
     } catch (error: any) {
       console.error("Error fetching data:", error)
@@ -101,10 +107,8 @@ export default function PurchasesPage() {
     return matchesSearch && matchesStatus && matchesPaymentStatus
   })
 
-  // Filter suppliers based on search term
-  const filteredSuppliers = suppliers.filter((supplier) =>
-    supplier.name.toLowerCase().includes(supplierSearch.toLowerCase())
-  )
+  // Suppliers are now filtered by the hook via the search parameter
+  // No need for client-side filtering
 
   // Show loading state
   if (isLoading || !user) {
@@ -288,11 +292,13 @@ export default function PurchasesPage() {
             </div>
 
             {/* Suppliers List */}
-            {loading ? (
+            {suppliersLoading ? (
               <div className="flex h-24 items-center justify-center">Loading...</div>
-            ) : filteredSuppliers.length > 0 ? (
+            ) : suppliersError ? (
+              <div className="flex h-24 items-center justify-center text-red-500">{suppliersError}</div>
+            ) : suppliers.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {filteredSuppliers.map((supplier) => (
+                {suppliers.map((supplier) => (
                   <SupplierCard key={supplier.id} supplier={supplier} />
                 ))}
               </div>
