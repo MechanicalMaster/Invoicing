@@ -5,10 +5,9 @@ import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { useReactToPrint } from "react-to-print"
 import dynamic from "next/dynamic"
-import { ArrowLeft, Save, Printer, Edit, DollarSign } from "lucide-react"
+import { ArrowLeft, Save, Printer, Edit, Share2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/components/auth-provider"
@@ -39,9 +38,9 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<any>(null)
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isUpdating, setIsUpdating] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [isBrowser, setIsBrowser] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
   
   const invoiceRef = useRef<HTMLDivElement>(null)
   
@@ -124,41 +123,66 @@ export default function InvoiceDetailPage() {
     }
   }
   
-  // Mark invoice as paid
-  const markAsPaid = async () => {
-    if (!user || !invoice) return
-    
+  // Share PDF functionality
+  const handleSharePDF = async () => {
+    if (!invoiceData || !invoice) return
+
     try {
-      setIsUpdating(true)
-      
-      const { error } = await supabase
-        .from('invoices')
-        .update({ status: 'paid' })
-        .eq('id', invoice.id)
-        .eq('user_id', user.id)
-      
-      if (error) throw error
-      
-      // Update local state
-      setInvoice({ ...invoice, status: 'paid' })
-      
-      toast({
-        title: "Invoice updated",
-        description: "Invoice has been marked as paid",
-        variant: "default",
-      })
+      setIsSharing(true)
+
+      // Dynamically import pdf generation libraries
+      const { pdf } = await import('@react-pdf/renderer')
+      const { InvoicePDF } = await import('@/app/create-invoice/invoice-pdf')
+
+      // Generate the PDF blob
+      const blob = await pdf(<InvoicePDF invoice={invoiceData} />).toBlob()
+
+      // Create a file from the blob
+      const fileName = `Sethiya-Gold-Invoice-${invoiceData.invoiceNumber}.pdf`
+      const file = new File([blob], fileName, { type: 'application/pdf' })
+
+      // Check if Web Share API is supported and can share files
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Invoice #${invoiceData.invoiceNumber}`,
+          text: `Invoice for ${invoiceData.customerName}`,
+          files: [file],
+        })
+
+        toast({
+          title: "Shared successfully",
+          description: "Invoice has been shared",
+        })
+      } else {
+        // Fallback: Download the PDF
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName
+        link.click()
+        URL.revokeObjectURL(url)
+
+        toast({
+          title: "Download started",
+          description: "Sharing is not supported on this device. PDF has been downloaded instead.",
+        })
+      }
     } catch (error: any) {
-      console.error("Error updating invoice:", error)
-      toast({
-        title: "Update failed",
-        description: error.message || "Could not update invoice status",
-        variant: "destructive",
-      })
+      console.error("Error sharing PDF:", error)
+
+      // Only show error if user didn't cancel the share
+      if (error.name !== 'AbortError') {
+        toast({
+          title: "Failed to share PDF",
+          description: error.message || "An error occurred while sharing the invoice",
+          variant: "destructive",
+        })
+      }
     } finally {
-      setIsUpdating(false)
+      setIsSharing(false)
     }
   }
-  
+
   // Format invoice data for the preview component - memoized to avoid recalculation
   // All formatting logic is inside useMemo to ensure stable references and proper dependency tracking
   const invoiceData = useMemo((): InvoiceData | null => {
@@ -289,49 +313,38 @@ export default function InvoiceDetailPage() {
       </div>
       
       <div className="flex flex-wrap justify-end gap-2">
-        {invoice.status !== 'paid' && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" disabled={isUpdating}>
-                <DollarSign className="mr-2 h-4 w-4" />
-                Mark as Paid
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Mark Invoice as Paid?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will update the invoice status to "Paid". This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={markAsPaid}>Continue</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-        
         <Link href={`/invoices/${invoice.id}/edit`}>
           <Button variant="outline">
             <Edit className="mr-2 h-4 w-4" />
             Edit Invoice
           </Button>
         </Link>
-        
+
         {isBrowser && (
           <Button variant="outline" onClick={handlePrint}>
             <Printer className="mr-2 h-4 w-4" />
             Print Invoice
           </Button>
         )}
-        
+
         {isBrowser && invoiceData && invoiceItems.length > 0 && (
-          <PDFDownloadLinkWrapper
-            invoiceData={invoiceData}
-            onStartGeneration={() => setIsGeneratingPDF(true)}
-            onFinishGeneration={() => setIsGeneratingPDF(false)}
-          />
+          <>
+            <PDFDownloadLinkWrapper
+              invoiceData={invoiceData}
+              onStartGeneration={() => setIsGeneratingPDF(true)}
+              onFinishGeneration={() => setIsGeneratingPDF(false)}
+            />
+
+            <Button
+              variant="outline"
+              onClick={handleSharePDF}
+              disabled={isSharing}
+              className="bg-amber-600 text-white hover:bg-amber-700 hover:text-white"
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              {isSharing ? "Preparing..." : "Share PDF"}
+            </Button>
+          </>
         )}
       </div>
       

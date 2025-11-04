@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Calendar, FileText, Printer, Search, PlusCircle, ChevronLeft, ChevronRight, ArrowDownUp } from "lucide-react"
+import { Calendar, FileText, Printer, Search, PlusCircle, ChevronLeft, ChevronRight, ArrowDownUp, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +34,8 @@ export default function InvoicesPage() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
-  
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
@@ -131,6 +132,53 @@ export default function InvoicesPage() {
   // Toggle sort direction
   const toggleSortDirection = () => {
     setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+  }
+
+  // Delete invoice
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    if (!confirm("Are you sure you want to delete this invoice? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      setDeletingId(invoiceId)
+
+      // Get the current session for authentication
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        throw new Error('No active session')
+      }
+
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete invoice')
+      }
+
+      toast({
+        title: "Invoice deleted",
+        description: "The invoice has been successfully deleted",
+      })
+
+      // Refresh the invoice list
+      fetchInvoices()
+    } catch (error: any) {
+      console.error("Error deleting invoice:", error)
+      toast({
+        title: "Failed to delete invoice",
+        description: error.message || "An error occurred while deleting the invoice",
+        variant: "destructive",
+      })
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   // Calculate total pages
@@ -305,11 +353,25 @@ export default function InvoicesPage() {
                       <StatusBadge status={invoice.status} />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link href={`/invoices/${invoice.id}`}>
-                        <Button variant="outline" size="sm">
-                          View
+                      <div className="flex justify-end gap-2">
+                        <Link href={`/invoices/${invoice.id}`}>
+                          <Button variant="outline" size="sm">
+                            View
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteInvoice(invoice.id)}
+                          disabled={deletingId === invoice.id}
+                        >
+                          {deletingId === invoice.id ? (
+                            "Deleting..."
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
                         </Button>
-                      </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
