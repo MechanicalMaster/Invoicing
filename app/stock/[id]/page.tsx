@@ -137,7 +137,7 @@ export default function StockItemDetailPage() {
           stock: 1, // Assuming each row is one item
           images: imageUrls,
           description: data.description || `${data.material} ${data.category} (${data.purity || 'N/A'})`,
-          dateAdded: new Date(data.created_at),
+          dateAdded: data.created_at ? new Date(data.created_at) : new Date(),
           supplier: data.supplier || 'Not specified',
           purchaseDate: data.purchase_date ? new Date(data.purchase_date) : new Date(),
           purchasePrice: data.purchase_price,

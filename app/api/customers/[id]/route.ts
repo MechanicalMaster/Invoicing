@@ -158,7 +158,7 @@ export async function PUT(
 
 /**
  * DELETE /api/customers/[id]
- * Delete a customer
+ * Delete a customer and cleanup identity document file
  */
 export async function DELETE(
   request: NextRequest,
@@ -172,32 +172,31 @@ export async function DELETE(
       return apiError('Customer ID is required', 400)
     }
 
-    // Check if customer has any invoices (foreign key reference)
-    const { data: invoices, error: invoiceError } = await supabaseServer
-      .from('invoices')
-      .select('id')
-      .eq('customer_id', id)
-      .limit(1)
+    // Use PostgreSQL function to delete and get file path
+    const { data: result, error: rpcError } = await supabaseServer.rpc('delete_customer_with_cleanup', {
+      p_user_id: user.id,
+      p_customer_id: id,
+    })
 
-    if (invoiceError) {
-      console.error('Error checking customer invoices:', invoiceError)
-      return apiError('Failed to verify customer references', 500)
+    if (rpcError) {
+      if (rpcError.message.includes('existing invoices')) {
+        return apiError('Cannot delete customer with existing invoices', 400)
+      }
+      console.error('Error deleting customer:', rpcError)
+      return apiError(rpcError.message || 'Failed to delete customer', 500)
     }
 
-    if (invoices && invoices.length > 0) {
-      return apiError('Cannot delete customer with existing invoices', 400)
-    }
+    // Delete identity document from storage if it exists
+    if (result && result.length > 0 && result[0].identity_doc_path) {
+      const filePath = result[0].identity_doc_path
+      const { error: storageError } = await supabaseServer.storage
+        .from('identity_docs')
+        .remove([filePath])
 
-    // Delete customer
-    const { error } = await supabaseServer
-      .from('customers')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-
-    if (error) {
-      console.error('Error deleting customer:', error)
-      return apiError(error.message, 500)
+      if (storageError) {
+        console.error('Error deleting identity document:', storageError)
+        // Log but don't fail - customer is already deleted from database
+      }
     }
 
     return apiResponse({ success: true, message: 'Customer deleted successfully' })

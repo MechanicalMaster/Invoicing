@@ -101,6 +101,15 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating stock item:', error)
+
+      // CRITICAL: Rollback file uploads if stock item creation failed
+      if (body.image_urls && body.image_urls.length > 0) {
+        await supabaseServer.storage
+          .from('stock_item_images')
+          .remove(body.image_urls)
+          .catch(err => console.error('Error rolling back file uploads:', err))
+      }
+
       return apiError(error.message, 500)
     }
 

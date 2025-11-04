@@ -167,10 +167,10 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
       setCurrentSession({
         id: session.id,
-        title: session.title,
-        createdAt: new Date(session.created_at),
-        updatedAt: new Date(session.updated_at),
-        isActive: session.is_active,
+        title: session.title || 'Untitled Chat',
+        createdAt: session.created_at ? new Date(session.created_at) : new Date(),
+        updatedAt: session.updated_at ? new Date(session.updated_at) : new Date(),
+        isActive: session.is_active ?? false,
       })
 
       // Load messages for this session
@@ -434,10 +434,10 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
       setCurrentSession({
         id: session.id,
-        title: session.title,
-        createdAt: new Date(session.created_at),
-        updatedAt: new Date(session.updated_at),
-        isActive: session.is_active,
+        title: session.title || 'Untitled Chat',
+        createdAt: session.created_at ? new Date(session.created_at) : new Date(),
+        updatedAt: session.updated_at ? new Date(session.updated_at) : new Date(),
+        isActive: session.is_active ?? false,
       })
 
       // Load messages for this session
@@ -511,10 +511,10 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
       setCurrentSession({
         id: newSession.id,
-        title: newSession.title,
-        createdAt: new Date(newSession.created_at),
-        updatedAt: new Date(newSession.updated_at),
-        isActive: newSession.is_active,
+        title: newSession.title || 'Untitled Chat',
+        createdAt: newSession.created_at ? new Date(newSession.created_at) : new Date(),
+        updatedAt: newSession.updated_at ? new Date(newSession.updated_at) : new Date(),
+        isActive: newSession.is_active ?? false,
       })
 
       // Clear messages

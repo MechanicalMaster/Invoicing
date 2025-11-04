@@ -124,6 +124,15 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating purchase invoice:', error)
+
+      // CRITICAL: Rollback file upload if purchase invoice creation failed
+      if (body.invoice_file_url) {
+        await supabaseServer.storage
+          .from('purchase-invoices')
+          .remove([body.invoice_file_url])
+          .catch(err => console.error('Error rolling back file upload:', err))
+      }
+
       return apiError(error.message, 500)
     }
 

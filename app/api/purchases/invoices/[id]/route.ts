@@ -164,7 +164,7 @@ export async function PUT(
 
 /**
  * DELETE /api/purchases/invoices/[id]
- * Delete a purchase invoice
+ * Delete a purchase invoice and cleanup invoice file
  */
 export async function DELETE(
   request: NextRequest,
@@ -178,16 +178,28 @@ export async function DELETE(
       return apiError('Purchase invoice ID is required', 400)
     }
 
-    // Delete purchase invoice
-    const { error } = await supabaseServer
-      .from('purchase_invoices')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
+    // Use PostgreSQL function to delete and get file path
+    const { data: result, error: rpcError } = await supabaseServer.rpc('delete_purchase_invoice_with_cleanup', {
+      p_user_id: user.id,
+      p_invoice_id: id,
+    })
 
-    if (error) {
-      console.error('Error deleting purchase invoice:', error)
-      return apiError(error.message, 500)
+    if (rpcError) {
+      console.error('Error deleting purchase invoice:', rpcError)
+      return apiError(rpcError.message || 'Failed to delete purchase invoice', 500)
+    }
+
+    // Delete invoice file from storage if it exists
+    if (result && result.length > 0 && result[0].file_path) {
+      const filePath = result[0].file_path
+      const { error: storageError } = await supabaseServer.storage
+        .from('purchase-invoices')
+        .remove([filePath])
+
+      if (storageError) {
+        console.error('Error deleting invoice file:', storageError)
+        // Log but don't fail - invoice is already deleted from database
+      }
     }
 
     return apiResponse({ success: true, message: 'Purchase invoice deleted successfully' })

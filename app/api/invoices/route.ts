@@ -146,97 +146,48 @@ export async function POST(request: NextRequest) {
       return apiError('Amounts cannot be negative', 400)
     }
 
-    // Get next invoice number (atomic increment)
-    const { data: settingsData, error: settingsError } = await supabaseServer
-      .from('user_settings')
-      .select('invoice_default_prefix, invoice_next_number')
-      .eq('user_id', user.id)
-      .single()
+    // Use PostgreSQL function for atomic operation
+    // This ensures invoice + items + number increment all succeed or all fail
+    const { data: result, error: rpcError } = await supabaseServer.rpc('create_invoice_with_items', {
+      p_user_id: user.id,
+      p_customer_id: body.customer_id || undefined,
+      p_customer_name_snapshot: body.customer_name_snapshot.trim(),
+      p_customer_phone_snapshot: body.customer_phone_snapshot?.trim() || undefined,
+      p_customer_email_snapshot: body.customer_email_snapshot?.trim() || undefined,
+      p_customer_address_snapshot: body.customer_address_snapshot?.trim() || undefined,
+      p_firm_name_snapshot: body.firm_name_snapshot.trim(),
+      p_firm_address_snapshot: body.firm_address_snapshot?.trim() || undefined,
+      p_firm_phone_snapshot: body.firm_phone_snapshot?.trim() || undefined,
+      p_firm_gstin_snapshot: body.firm_gstin_snapshot?.trim() || undefined,
+      p_invoice_date: body.invoice_date,
+      p_subtotal: body.subtotal,
+      p_gst_percentage: body.gst_percentage,
+      p_gst_amount: body.gst_amount,
+      p_grand_total: body.grand_total,
+      p_status: body.status || 'finalized',
+      p_notes: body.notes?.trim() || undefined,
+      p_items: body.items as any, // PostgreSQL function expects JSONB
+    } as any)
 
-    if (settingsError) {
-      console.error('Error fetching settings:', settingsError)
-      return apiError('Failed to generate invoice number', 500)
+    if (rpcError) {
+      console.error('Error creating invoice with items:', rpcError)
+      return apiError(rpcError.message || 'Failed to create invoice', 500)
     }
 
-    const prefix = settingsData?.invoice_default_prefix || 'INV-'
-    const nextNumber = settingsData?.invoice_next_number || 1
-    const invoiceNumber = `${prefix}${nextNumber.toString().padStart(4, '0')}`
-
-    // Create invoice
-    const invoiceData = {
-      user_id: user.id,
-      customer_id: body.customer_id || null,
-      invoice_number: invoiceNumber,
-      invoice_date: body.invoice_date,
-      status: body.status || 'finalized',
-      customer_name_snapshot: body.customer_name_snapshot.trim(),
-      customer_address_snapshot: body.customer_address_snapshot?.trim() || null,
-      customer_phone_snapshot: body.customer_phone_snapshot?.trim() || null,
-      customer_email_snapshot: body.customer_email_snapshot?.trim() || null,
-      firm_name_snapshot: body.firm_name_snapshot.trim(),
-      firm_address_snapshot: body.firm_address_snapshot?.trim() || null,
-      firm_phone_snapshot: body.firm_phone_snapshot?.trim() || null,
-      firm_gstin_snapshot: body.firm_gstin_snapshot?.trim() || null,
-      subtotal: body.subtotal,
-      gst_percentage: body.gst_percentage,
-      gst_amount: body.gst_amount,
-      grand_total: body.grand_total,
-      notes: body.notes?.trim() || null,
+    if (!result || result.length === 0) {
+      return apiError('Failed to create invoice', 500)
     }
 
-    const { data: invoice, error: invoiceError } = await supabaseServer
-      .from('invoices')
-      .insert(invoiceData)
-      .select()
-      .single()
+    const { invoice_id, invoice_number } = result[0]
 
-    if (invoiceError) {
-      console.error('Error creating invoice:', invoiceError)
-      return apiError(invoiceError.message, 500)
-    }
-
-    // Create invoice items
-    const itemsData = body.items.map((item) => ({
-      invoice_id: invoice.id,
-      user_id: user.id,
-      name: item.name.trim(),
-      quantity: item.quantity,
-      weight: item.weight,
-      price_per_gram: item.price_per_gram,
-      total: item.total,
-    }))
-
-    const { error: itemsError } = await supabaseServer
-      .from('invoice_items')
-      .insert(itemsData)
-
-    if (itemsError) {
-      console.error('Error creating invoice items:', itemsError)
-      // Rollback: delete the invoice
-      await supabaseServer.from('invoices').delete().eq('id', invoice.id)
-      return apiError('Failed to create invoice items', 500)
-    }
-
-    // Increment invoice number (atomic)
-    const { error: updateError } = await supabaseServer
-      .from('user_settings')
-      .update({ invoice_next_number: nextNumber + 1 })
-      .eq('user_id', user.id)
-
-    if (updateError) {
-      console.error('Error updating invoice number:', updateError)
-      // Don't fail the request, but log the error
-      // The invoice is already created successfully
-    }
-
-    // Return invoice with items
-    const { data: invoiceWithItems } = await supabaseServer
+    // Fetch the complete invoice with items
+    const { data: completeInvoice } = await supabaseServer
       .from('invoices')
       .select('*, invoice_items(*)')
-      .eq('id', invoice.id)
+      .eq('id', invoice_id)
       .single()
 
-    return apiResponse(invoiceWithItems || invoice, undefined, 201)
+    return apiResponse(completeInvoice || { id: invoice_id, invoice_number }, undefined, 201)
   } catch (error: any) {
     console.error('POST /api/invoices error:', error)
     return apiError(error.message, error.message.includes('Unauthorized') ? 401 : 500)

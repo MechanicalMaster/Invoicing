@@ -26,7 +26,7 @@ interface StockData {
   supplier: string | null
   is_sold: boolean
   sold_at: string | null
-  created_at: string
+  created_at: string | null
 }
 
 type StatusFilter = "all" | "available" | "sold"

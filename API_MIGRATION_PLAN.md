@@ -1438,3 +1438,49 @@ The API migration is now complete! All core business entities have been migrated
 **Completion Date:** 2025-10-30
 **Duration:** 6 weeks (accelerated from planned 11 weeks)
 **Status:** ✅ MIGRATION COMPLETE
+
+---
+
+## ⚠️ CRITICAL ADDENDUM: Transactional Integrity Issues
+
+**Date Identified:** 2025-01-30
+**Severity:** HIGH - Privacy, Cost, and Data Integrity Risks
+**Documentation:** `/TRANSACTIONAL_INTEGRITY_FIX.md` (Comprehensive Guide)
+**SQL Migration:** `/supabase/migrations/20250130_atomic_operations.sql` (Ready to Apply)
+
+### Issues Discovered
+
+During post-migration review, critical transactional integrity issues were identified:
+
+1. **Orphaned Files Risk** - Files uploaded but database records fail to create
+2. **Privacy Violation** - Customer identity documents not deleted with records
+3. **Race Conditions** - Invoice number generation not truly atomic
+4. **Data Inconsistencies** - Partial failures in multi-step operations
+5. **Storage Waste** - Deleted records leave files in storage forever
+
+### Solution Status
+
+✅ **PostgreSQL Functions Created** - 5 atomic operation functions
+✅ **Comprehensive Documentation** - Step-by-step implementation guide
+⏳ **API Updates Pending** - Estimated 4-5 hours to complete
+
+### Implementation Required
+
+**See `/TRANSACTIONAL_INTEGRITY_FIX.md` for:**
+- Detailed problem analysis
+- Complete code fixes for all affected endpoints
+- Testing checklist
+- Rollback plan
+- Priority order
+
+**Affected Endpoints:**
+- POST/DELETE `/api/invoices` (CRITICAL - race conditions)
+- DELETE `/api/customers/[id]` (CRITICAL - privacy risk)
+- DELETE `/api/stock/[id]` (HIGH - cost risk)
+- DELETE `/api/purchases/invoices/[id]`
+- POST `/api/customers`, `/api/stock`, `/api/purchases/invoices`
+- POST `/api/ai/chat/new-session`
+
+### Recommendation
+
+**Implement fixes before production deployment.** These are not theoretical issues - they will cause real problems with customer data, storage costs, and data integrity.

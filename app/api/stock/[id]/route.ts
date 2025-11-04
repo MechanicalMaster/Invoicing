@@ -150,7 +150,7 @@ export async function PUT(
 
 /**
  * DELETE /api/stock/[id]
- * Delete a stock item
+ * Delete a stock item and cleanup image files
  */
 export async function DELETE(
   request: NextRequest,
@@ -164,16 +164,30 @@ export async function DELETE(
       return apiError('Stock item ID is required', 400)
     }
 
-    // Delete stock item
-    const { error } = await supabaseServer
-      .from('stock_items')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
+    // Use PostgreSQL function to delete and get image paths
+    const { data: result, error: rpcError } = await supabaseServer.rpc('delete_stock_item_with_cleanup', {
+      p_user_id: user.id,
+      p_item_id: id,
+    })
 
-    if (error) {
-      console.error('Error deleting stock item:', error)
-      return apiError(error.message, 500)
+    if (rpcError) {
+      console.error('Error deleting stock item:', rpcError)
+      return apiError(rpcError.message || 'Failed to delete stock item', 500)
+    }
+
+    // Delete images from storage if they exist
+    if (result && result.length > 0 && result[0].image_paths) {
+      const imagePaths = result[0].image_paths
+      if (imagePaths && imagePaths.length > 0) {
+        const { error: storageError } = await supabaseServer.storage
+          .from('stock_item_images')
+          .remove(imagePaths)
+
+        if (storageError) {
+          console.error('Error deleting stock images:', storageError)
+          // Log but don't fail - stock item is already deleted from database
+        }
+      }
     }
 
     return apiResponse({ success: true, message: 'Stock item deleted successfully' })

@@ -7,8 +7,248 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      ai_actions: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          entity_id: string | null
+          error_message: string | null
+          executed_at: string | null
+          extracted_data: Json
+          id: string
+          missing_fields: string[] | null
+          session_id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+          validation_errors: Json | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          entity_id?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          extracted_data?: Json
+          id?: string
+          missing_fields?: string[] | null
+          session_id: string
+          status: string
+          updated_at?: string | null
+          user_id: string
+          validation_errors?: Json | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          entity_id?: string | null
+          error_message?: string | null
+          executed_at?: string | null
+          extracted_data?: Json
+          id?: string
+          missing_fields?: string[] | null
+          session_id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          validation_errors?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_actions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_chat_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          mode: string | null
+          role: string
+          session_id: string
+          tokens_used: number | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          mode?: string | null
+          role: string
+          session_id: string
+          tokens_used?: number | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          mode?: string | null
+          role?: string
+          session_id?: string
+          tokens_used?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_chat_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          mode: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          mode?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          mode?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          entity: string
+          entity_id: string | null
+          id: string
+          metadata: Json | null
+          success: boolean
+          timestamp: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity: string
+          entity_id?: string | null
+          id?: string
+          metadata?: Json | null
+          success?: boolean
+          timestamp?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity?: string
+          entity_id?: string | null
+          id?: string
+          metadata?: Json | null
+          success?: boolean
+          timestamp?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      chat_mode_transitions: {
+        Row: {
+          created_at: string | null
+          from_mode: string
+          id: string
+          metadata: Json | null
+          preserve_history: boolean | null
+          session_id: string | null
+          to_mode: string
+          trigger_reason: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          from_mode: string
+          id?: string
+          metadata?: Json | null
+          preserve_history?: boolean | null
+          session_id?: string | null
+          to_mode: string
+          trigger_reason: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          from_mode?: string
+          id?: string
+          metadata?: Json | null
+          preserve_history?: boolean | null
+          session_id?: string | null
+          to_mode?: string
+          trigger_reason?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_mode_transitions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -303,7 +543,7 @@ export type Database = {
       stock_items: {
         Row: {
           category: string
-          created_at: string
+          created_at: string | null
           description: string | null
           id: string
           image_urls: string[] | null
@@ -315,13 +555,13 @@ export type Database = {
           purity: string | null
           sold_at: string | null
           supplier: string | null
-          updated_at: string
+          updated_at: string | null
           user_id: string
           weight: number
         }
         Insert: {
           category: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           image_urls?: string[] | null
@@ -333,13 +573,13 @@ export type Database = {
           purity?: string | null
           sold_at?: string | null
           supplier?: string | null
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
           weight: number
         }
         Update: {
           category?: string
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           id?: string
           image_urls?: string[] | null
@@ -351,7 +591,7 @@ export type Database = {
           purity?: string | null
           sold_at?: string | null
           supplier?: string | null
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
           weight?: number
         }
@@ -434,7 +674,7 @@ export type Database = {
           photo_compression_level:
             | Database["public"]["Enums"]["photo_compression_enum"]
             | null
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
@@ -474,7 +714,7 @@ export type Database = {
           photo_compression_level?:
             | Database["public"]["Enums"]["photo_compression_enum"]
             | null
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
@@ -514,7 +754,7 @@ export type Database = {
           photo_compression_level?:
             | Database["public"]["Enums"]["photo_compression_enum"]
             | null
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -527,143 +767,53 @@ export type Database = {
           },
         ]
       }
-      ai_chat_sessions: {
-        Row: {
-          id: string
-          user_id: string
-          title: string
-          created_at: string
-          updated_at: string
-          is_active: boolean
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          title?: string
-          created_at?: string
-          updated_at?: string
-          is_active?: boolean
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          created_at?: string
-          updated_at?: string
-          is_active?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_chat_sessions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ai_chat_messages: {
-        Row: {
-          id: string
-          session_id: string
-          user_id: string
-          role: string
-          content: string
-          metadata: Json
-          tokens_used: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          session_id: string
-          user_id: string
-          role: string
-          content: string
-          metadata?: Json
-          tokens_used?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          session_id?: string
-          user_id?: string
-          role?: string
-          content?: string
-          metadata?: Json
-          tokens_used?: number
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ai_chat_messages_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "ai_chat_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ai_chat_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       voice_transcriptions: {
         Row: {
-          id: string
-          user_id: string
-          session_id: string
           audio_duration: number
+          audio_format: string | null
           audio_size: number
-          audio_format: string
-          original_text: string
-          detected_language: string
           confidence_score: number | null
-          needs_translation: boolean
+          created_at: string | null
+          detected_language: string
+          id: string
+          metadata: Json | null
+          needs_translation: boolean | null
+          original_text: string
+          session_id: string
           translated_text: string | null
-          created_at: string
-          metadata: Json
+          user_id: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          session_id: string
           audio_duration: number
+          audio_format?: string | null
           audio_size: number
-          audio_format?: string
-          original_text: string
-          detected_language: string
           confidence_score?: number | null
-          needs_translation?: boolean
+          created_at?: string | null
+          detected_language: string
+          id?: string
+          metadata?: Json | null
+          needs_translation?: boolean | null
+          original_text: string
+          session_id: string
           translated_text?: string | null
-          created_at?: string
-          metadata?: Json
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          session_id?: string
           audio_duration?: number
+          audio_format?: string | null
           audio_size?: number
-          audio_format?: string
-          original_text?: string
-          detected_language?: string
           confidence_score?: number | null
-          needs_translation?: boolean
+          created_at?: string | null
+          detected_language?: string
+          id?: string
+          metadata?: Json | null
+          needs_translation?: boolean | null
+          original_text?: string
+          session_id?: string
           translated_text?: string | null
-          created_at?: string
-          metadata?: Json
+          user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "voice_transcriptions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "voice_transcriptions_session_id_fkey"
             columns: ["session_id"]
@@ -678,7 +828,54 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_invoice_with_items: {
+        Args: {
+          p_customer_address_snapshot: string
+          p_customer_email_snapshot: string
+          p_customer_id: string
+          p_customer_name_snapshot: string
+          p_customer_phone_snapshot: string
+          p_firm_address_snapshot: string
+          p_firm_gstin_snapshot: string
+          p_firm_name_snapshot: string
+          p_firm_phone_snapshot: string
+          p_grand_total: number
+          p_gst_amount: number
+          p_gst_percentage: number
+          p_invoice_date: string
+          p_items: Json
+          p_notes: string
+          p_status: string
+          p_subtotal: number
+          p_user_id: string
+        }
+        Returns: {
+          invoice_id: string
+          invoice_number: string
+        }[]
+      }
+      create_new_chat_session: {
+        Args: { p_title: string; p_user_id: string }
+        Returns: string
+      }
+      delete_customer_with_cleanup: {
+        Args: { p_customer_id: string; p_user_id: string }
+        Returns: {
+          identity_doc_path: string
+        }[]
+      }
+      delete_purchase_invoice_with_cleanup: {
+        Args: { p_invoice_id: string; p_user_id: string }
+        Returns: {
+          file_path: string
+        }[]
+      }
+      delete_stock_item_with_cleanup: {
+        Args: { p_item_id: string; p_user_id: string }
+        Returns: {
+          image_paths: string[]
+        }[]
+      }
     }
     Enums: {
       label_type_enum: "standard" | "large" | "small"
@@ -692,21 +889,25 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
@@ -724,14 +925,16 @@ export type Tables<
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
@@ -747,14 +950,16 @@ export type TablesInsert<
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
@@ -770,14 +975,16 @@ export type TablesUpdate<
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
@@ -785,19 +992,24 @@ export type Enums<
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof Database },
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof Database
+    schema: keyof DatabaseWithoutInternals
   }
-    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       label_type_enum: ["standard", "large", "small"],
@@ -806,4 +1018,4 @@ export const Constants = {
       qr_error_correction_level_enum: ["L", "M", "Q", "H"],
     },
   },
-} as const 
+} as const

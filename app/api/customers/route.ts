@@ -101,6 +101,15 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Error creating customer:', error)
+
+      // CRITICAL: Rollback file upload if customer creation failed
+      if (body.identity_doc) {
+        await supabaseServer.storage
+          .from('identity_docs')
+          .remove([body.identity_doc])
+          .catch(err => console.error('Error rolling back file upload:', err))
+      }
+
       return apiError(error.message, 500)
     }
 

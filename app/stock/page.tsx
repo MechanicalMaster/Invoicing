@@ -133,7 +133,7 @@ export default function StockPage() {
             stock: 1, // Assuming each row is one item
             images: imageUrls,
             description: item.description || `${item.material} ${item.category} (${item.purity || 'N/A'})`,
-            dateAdded: new Date(item.created_at),
+            dateAdded: item.created_at ? new Date(item.created_at) : new Date(),
             is_sold: item.is_sold,
             sold_at: item.sold_at,
             supplier: item.supplier
@@ -192,7 +192,7 @@ export default function StockPage() {
             )
           : ["/placeholder.svg?height=300&width=300"],
         description: item.description || `${item.material} ${item.category} (${item.purity || 'N/A'})`,
-        dateAdded: new Date(item.created_at)
+        dateAdded: item.created_at ? new Date(item.created_at) : new Date()
       } as StockItem
     })
     
