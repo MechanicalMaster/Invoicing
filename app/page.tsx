@@ -277,7 +277,7 @@ export default function LandingPage() {
               <h4 className="mb-4 font-semibold text-primary">Contact</h4>
               <ul className="space-y-2 text-muted-foreground">
                 <li>info@sethiyagold.com</li>
-                <li>+91 98765 43210</li>
+                <li>+918454881721</li>
                 <li>Mumbai, India</li>
               </ul>
             </div>
