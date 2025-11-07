@@ -4,57 +4,76 @@ import { TERMS_AND_CONDITIONS, AGREEMENT_TEXT } from "@/lib/invoice-text"
 
 const MM_TO_PT = 2.8346;
 
-// Create styles
+// Luxury Gold & Black Color Palette
+const COLORS = {
+  gold: '#D4AF37',           // Primary gold
+  darkGold: '#B8960C',       // Darker gold for depth
+  black: '#000000',          // Primary text
+  cream: '#FFFEF0',          // Background cream
+  lightCream: '#FFF9E6',     // Alternating rows
+  white: '#FFFFFF',          // Pure white
+  darkGray: '#333333',       // Secondary text
+  lightGray: '#E5E5E5',      // Subtle borders
+};
+
+// Create styles - Luxury Gold & Black Theme
 const styles = StyleSheet.create({
   page: {
     paddingTop: 10 * MM_TO_PT,
     paddingBottom: 15 * MM_TO_PT,
     paddingHorizontal: 10 * MM_TO_PT,
-    fontSize: 10,           // Default font size for body text
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#000000',
+    fontSize: 10,
+    backgroundColor: COLORS.cream,
+    borderWidth: 2,
+    borderColor: COLORS.gold,
   },
-  // Header Styles
+
+  // Header Styles - Luxury Gold Theme
   headerSection: {
-    marginBottom: 15,
+    marginBottom: 18,
   },
   headerColoredBand: {
-    backgroundColor: '#E8EAF6', // A light blue/gray, adjust to your brand
+    backgroundColor: COLORS.gold,
     position: 'absolute',
-    top: 5 * MM_TO_PT,      // Adjust positioning carefully
-    left: -10 * MM_TO_PT,   // Span full width beyond page padding
+    top: 5 * MM_TO_PT,
+    left: -10 * MM_TO_PT,
     right: -10 * MM_TO_PT,
-    height: 60,             // Adjust height for content
+    height: 70,
     zIndex: -1,
   },
   taxInvoiceTitle: {
     textAlign: 'center',
-    fontSize: 14,
-    color: '#B22222', // Firebrick red
-    letterSpacing: 1,
-    marginBottom: 5,
-    marginTop: 5, // Added margin for spacing from top or devanagari if used
+    fontSize: 12,
+    color: COLORS.white,
+    letterSpacing: 2,
+    marginBottom: 6,
+    marginTop: 8,
+    fontWeight: 'bold',
   },
   firmNameHeader: {
     textAlign: 'center',
-    fontSize: 28,
-    color: '#B22222', // Firebrick red
+    fontSize: 32,
+    color: COLORS.black,
     textTransform: 'uppercase',
-    marginBottom: 2,
+    marginBottom: 3,
+    fontWeight: 'bold',
+    letterSpacing: 1.5,
   },
   firmTagline: {
     textAlign: 'center',
-    fontSize: 9,
+    fontSize: 10,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 3,
+    letterSpacing: 1,
+    marginBottom: 4,
+    color: COLORS.gold,
+    fontStyle: 'italic',
   },
   firmAddressGstinHeader: {
     textAlign: 'center',
     fontSize: 8.5,
-    lineHeight: 1.3,
-    marginBottom: 3,
+    lineHeight: 1.4,
+    marginBottom: 2,
+    color: COLORS.black,
   },
   telNumberHeader: {
     textAlign: 'right',
@@ -62,177 +81,206 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     right: 0,
+    color: COLORS.white,
   },
   invoiceMetaBlock: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    fontSize: 9.5,
-    paddingVertical: 5,
-    borderTopWidth: 0.5,
-    borderBottomWidth: 0.5,
-    borderColor: '#555555',
-    marginTop: 5,
-    marginBottom: 10,
+    fontSize: 10,
+    paddingVertical: 6,
+    borderTopWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: COLORS.gold,
+    marginTop: 8,
+    marginBottom: 12,
+    color: COLORS.black,
   },
 
-  // Customer Info Styles
+  // Customer Info Styles - Gold Border
   customerInfoContainer: {
-    borderWidth: 1,
-    borderColor: '#AAAAAA',
-    padding: 8,
-    marginBottom: 15,
+    borderWidth: 1.5,
+    borderColor: COLORS.gold,
+    backgroundColor: COLORS.white,
+    padding: 10,
+    marginBottom: 16,
     fontSize: 9.5,
   },
   customerInfoRow: {
     flexDirection: 'row',
-    marginBottom: 2,
+    marginBottom: 3,
   },
   customerInfoLabel: {
     width: '18%',
+    color: COLORS.darkGray,
+    fontWeight: 'bold',
   },
   customerInfoValue: {
     width: '82%',
+    color: COLORS.black,
   },
 
-  // Table Styles
+  // Table Styles - Gold Accents
   table: {
     width: '100%',
     borderStyle: 'solid',
-    borderWidth: 0.5,
-    borderColor: '#000000',
+    borderWidth: 1,
+    borderColor: COLORS.gold,
     borderRightWidth: 0,
     borderBottomWidth: 0,
-    marginBottom: 15,
+    marginBottom: 16,
   },
   tableRow: {
     flexDirection: 'row',
   },
   tableColHeader: {
     borderStyle: 'solid',
-    borderBottomWidth: 0.5,
-    borderColor: '#000000',
-    borderRightWidth: 0.5,
-    paddingVertical: 3, // Adjusted for 8pt feel with default fonts
-    paddingHorizontal: 5,
-    backgroundColor: '#E0E0E0',
-    fontSize: 9,
+    borderBottomWidth: 1,
+    borderColor: COLORS.gold,
+    borderRightWidth: 1,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    backgroundColor: COLORS.gold,
+    fontSize: 9.5,
     textAlign: 'center',
+    color: COLORS.white,
+    fontWeight: 'bold',
   },
   tableCol: {
     borderStyle: 'solid',
     borderBottomWidth: 0.5,
-    borderColor: '#000000',
+    borderColor: COLORS.lightGray,
     borderRightWidth: 0.5,
-    paddingVertical: 3, // Adjusted for 8pt feel
-    paddingHorizontal: 5,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     fontSize: 9,
+    color: COLORS.black,
   },
   colItem: { width: '35%' },
   colQty: { width: '10%', textAlign: 'center' },
   colWeight: { width: '15%', textAlign: 'right' },
   colPricePerGram: { width: '20%', textAlign: 'right' },
   colAmount: { width: '20%', textAlign: 'right', borderRightWidth: 0 },
-  tableRowLight: { backgroundColor: '#FFFFFF' },
-  tableRowDark: { backgroundColor: '#F5F5F5' },
+  tableRowLight: { backgroundColor: COLORS.white },
+  tableRowDark: { backgroundColor: COLORS.lightCream },
 
-  // Summary Styles
+  // Summary Styles - Elegant Gold Accents
   summarySection: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 10,
+    marginTop: 12,
   },
   summaryTable: {
     width: '50%',
-    fontSize: 9.5,
+    fontSize: 10,
+    borderWidth: 1,
+    borderColor: COLORS.gold,
+    padding: 8,
+    backgroundColor: COLORS.white,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderBottomWidth: 0.5,
-    borderColor: '#888888',
+    borderColor: COLORS.lightGray,
   },
   summaryLabel: {
     textAlign: 'left',
+    color: COLORS.black,
   },
   summaryValue: {
     textAlign: 'right',
+    color: COLORS.black,
   },
   grandTotalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#000000',
-    marginTop: 3,
+    paddingVertical: 6,
+    backgroundColor: COLORS.gold,
+    marginTop: 4,
+    marginHorizontal: -8,
+    paddingHorizontal: 8,
   },
   grandTotalLabel: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.white,
   },
   grandTotalValue: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: 'bold',
     textAlign: 'right',
+    color: COLORS.white,
   },
 
-  // Footer Styles
+  // Footer Styles - Elegant Gold
   footerContainer: {
     position: 'absolute',
     bottom: 15 * MM_TO_PT,
     left: 10 * MM_TO_PT,
     right: 10 * MM_TO_PT,
-    borderWidth: 1,
-    borderColor: '#555555',
-    padding: 8,
+    borderWidth: 1.5,
+    borderColor: COLORS.gold,
+    padding: 10,
+    backgroundColor: COLORS.white,
   },
   footerDottedLine: {
-    borderTopWidth: 1,
-    borderTopStyle: 'dotted',
-    borderColor: '#555555',
-    marginBottom: 5,
+    borderTopWidth: 1.5,
+    borderColor: COLORS.gold,
+    marginBottom: 6,
   },
   footerThankYou: {
     textAlign: 'center',
-    fontSize: 10,
-    marginBottom: 5,
+    fontSize: 11,
+    marginBottom: 6,
+    color: COLORS.gold,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   footerTermsTitle: {
     fontSize: 9,
     textDecoration: 'underline',
-    marginBottom: 3,
+    marginBottom: 4,
+    color: COLORS.black,
+    fontWeight: 'bold',
   },
   footerTermItem: {
     fontSize: 7.5,
-    lineHeight: 1.3,
+    lineHeight: 1.4,
     marginBottom: 2,
+    color: COLORS.darkGray,
   },
   footerAgreement: {
     fontSize: 7.5,
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: 5,
+    marginBottom: 5,
+    color: COLORS.darkGray,
+    fontStyle: 'italic',
   },
   footerSignatureSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 10,
   },
   footerSignatureBox: {
     width: '48%',
     fontSize: 8.5,
+    color: COLORS.black,
   },
   signatureLine: {
-    borderBottomWidth: 0.5,
-    borderColor: '#333333',
-    marginTop: 15,
-    marginBottom: 2,
+    borderBottomWidth: 1,
+    borderColor: COLORS.gold,
+    marginTop: 18,
+    marginBottom: 3,
   },
   footerBottomText: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    fontSize: 8,
+    fontSize: 7.5,
     fontStyle: 'italic',
-    marginTop: 8,
+    marginTop: 10,
+    color: COLORS.darkGray,
   },
 });
 
