@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Jewelry Inventory",
+  "version": "0.1.0",
+  "identifier": "com.jewelryinventory.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Jewelry Inventory",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 768,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "identifier": "com.jewelryinventory.app",
+    "publisher": "Jewelry Inventory",
+    "copyright": "Copyright © 2025",
+    "category": "Business",
+    "shortDescription": "Local-first jewelry inventory management system",
+    "longDescription": "A desktop application for jewelry shop inventory management with high-quality image storage, AI-powered features, and optional cloud backup. Works 100% offline with optional cloud sync."
+  },
+  "plugins": {
+    "fs": {
+      "scope": [
+        "$APPDATA/*",
+        "$APPCONFIG/*",
+        "$APPDATA/images/**",
+        "$APPDATA/exports/**",
+        "$APPDATA/backups/**"
+      ]
+    },
+    "dialog": {
+      "all": true
+    },
+    "shell": {
+      "open": true
+    }
+  }
+}
