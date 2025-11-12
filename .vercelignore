@@ -1,0 +1,7 @@
+# Desktop app - not needed for web deployment
+desktop/
+
+# Tauri-specific files
+*.rs
+Cargo.toml
+Cargo.lock
