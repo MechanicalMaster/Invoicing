@@ -46,15 +46,17 @@ export function ChatPanel() {
       <div
         className={cn(
           'fixed z-50 flex flex-col',
-          // Mobile: fullscreen
-          'bottom-0 left-0 right-0 top-0 h-screen w-screen',
+          // Mobile: fullscreen with safe area support
+          'bottom-0 left-0 right-0 top-0 h-[100dvh] w-screen',
           // Desktop: side panel on the RIGHT
           'md:bottom-4 md:right-4 md:top-4 md:left-auto md:h-[calc(100vh-2rem)] md:w-[480px] md:max-w-[calc(100vw-2rem)] md:rounded-2xl md:shadow-2xl md:border md:border-[#E5E7EB] dark:md:border-[#2A2B32]',
           // Background
           'bg-white dark:bg-[#212121]',
           // Animation
           'animate-in slide-in-from-bottom duration-300',
-          'md:slide-in-from-right'
+          'md:slide-in-from-right',
+          // Prevent mobile scroll issues
+          'overflow-hidden'
         )}
       >
         <ChatHeader onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />

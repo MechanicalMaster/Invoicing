@@ -40,7 +40,7 @@ export function ChatMessages() {
   )
 
   return (
-    <ScrollArea className="flex-1 bg-white dark:bg-[#212121]">
+    <ScrollArea className="flex-1 min-h-0 bg-white dark:bg-[#212121]">
       <div className="mx-auto flex w-full flex-col">
         {hasMore && (
           <div className="flex justify-center py-4">

@@ -70,7 +70,7 @@ export function ChatInput() {
         />
       )}
 
-      <div className="border-t border-[#E5E7EB] bg-white p-4 dark:border-[#2A2B32] dark:bg-[#212121]">
+      <div className="shrink-0 border-t border-[#E5E7EB] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-[#2A2B32] dark:bg-[#212121]">
         <div className="mx-auto max-w-3xl">
           <div className="flex flex-col gap-3">
             {/* Voice Transcript Card - only if voice feature is enabled */}
