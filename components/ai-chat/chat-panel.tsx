@@ -37,7 +37,7 @@ export function ChatPanel() {
 
       {/* Backdrop for desktop */}
       <div
-        className="fixed inset-0 z-40 hidden bg-black/20 backdrop-blur-sm md:block"
+        className="fixed inset-0 z-40 hidden bg-black/30 backdrop-blur-sm md:block"
         onClick={closeChat}
         aria-hidden="true"
       />
@@ -49,7 +49,7 @@ export function ChatPanel() {
           // Mobile: fullscreen
           'bottom-0 left-0 right-0 top-0 h-screen w-screen',
           // Desktop: side panel on the RIGHT
-          'md:bottom-4 md:right-4 md:top-4 md:left-auto md:h-[calc(100vh-2rem)] md:w-[440px] md:max-w-[calc(100vw-2rem)] md:rounded-xl md:shadow-2xl md:border md:border-[#D1D5DB] dark:md:border-[#4E4F60]',
+          'md:bottom-4 md:right-4 md:top-4 md:left-auto md:h-[calc(100vh-2rem)] md:w-[480px] md:max-w-[calc(100vw-2rem)] md:rounded-2xl md:shadow-2xl md:border md:border-[#E5E7EB] dark:md:border-[#2A2B32]',
           // Background
           'bg-white dark:bg-[#212121]',
           // Animation

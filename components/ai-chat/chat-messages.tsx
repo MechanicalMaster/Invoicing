@@ -40,10 +40,10 @@ export function ChatMessages() {
   )
 
   return (
-    <ScrollArea className="flex-1 bg-[#F7F7F8] dark:bg-[#212121]">
-      <div className="mx-auto flex w-full flex-col px-3 py-4 md:px-4">
+    <ScrollArea className="flex-1 bg-white dark:bg-[#212121]">
+      <div className="mx-auto flex w-full flex-col">
         {hasMore && (
-          <div className="flex justify-center py-2">
+          <div className="flex justify-center py-4">
             <Button
               variant="outline"
               size="sm"
@@ -81,9 +81,9 @@ export function ChatMessages() {
         )}
 
         {Object.entries(groupedMessages).map(([dateLabel, msgs]) => (
-          <div key={dateLabel} className="space-y-1">
-            <div className="flex justify-center py-3">
-              <span className="rounded-full bg-white/50 px-3 py-1 text-xs font-medium text-[#6E6E80] dark:bg-[#2A2B32]">
+          <div key={dateLabel}>
+            <div className="flex justify-center py-4">
+              <span className="rounded-md bg-[#F7F7F8] px-3 py-1 text-xs font-medium text-[#6E6E80] dark:bg-[#2A2B32] dark:text-[#9CA3AF]">
                 {dateLabel}
               </span>
             </div>

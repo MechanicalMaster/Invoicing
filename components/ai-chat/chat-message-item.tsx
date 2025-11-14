@@ -75,118 +75,115 @@ export function ChatMessageItem({ message, onRetry }: ChatMessageItemProps) {
   return (
     <div
       className={cn(
-        'group mb-4 flex animate-in fade-in-0 slide-in-from-bottom-2 duration-300',
-        isUser ? 'justify-end' : 'items-start gap-3'
+        'group w-full border-b border-[#E5E7EB] dark:border-[#2A2B32] animate-in fade-in-0 slide-in-from-bottom-2 duration-300',
+        isUser ? 'bg-white dark:bg-[#212121]' : 'bg-[#F7F7F8] dark:bg-[#2A2B32]'
       )}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
-      {!isUser && (
+      <div className="mx-auto flex w-full max-w-3xl items-start gap-4 px-4 py-6 md:gap-6 md:px-6">
+        {/* Avatar - always on left for both user and AI */}
         <Avatar className="h-8 w-8 shrink-0">
-          <AvatarFallback className="bg-[#EA7317] text-sm font-semibold text-white">
-            AI
+          <AvatarFallback className={cn(
+            "text-sm font-semibold",
+            isUser
+              ? "bg-[#EA7317] text-white"
+              : "bg-[#10A37F] text-white"
+          )}>
+            {isUser ? 'You' : 'AI'}
           </AvatarFallback>
         </Avatar>
-      )}
 
-      <div className={cn('flex flex-col w-full', isUser ? 'items-end' : 'items-start')}>
-        {!hasAction && (
-          <div
-            className={cn(
-              'rounded-[18px] px-4 py-3 transition-all max-w-[85%] md:max-w-[70%]',
-              isUser
-                ? 'bg-[#EA7317] text-white shadow-sm'
-                : 'bg-[#F7F7F8] text-[#353740] dark:bg-[#2A2B32] dark:text-[#ECECF1]',
-              isError && 'border-2 border-red-500',
-              'hover:brightness-105'
-            )}
-          >
-            <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.6] md:text-base md:leading-[1.7]">
-              {message.content}
-            </p>
-          </div>
-        )}
-
-        {/* Action Confirmation Card */}
-        {hasAction && message.action.type === 'create_invoice' && (
-          <div className="w-full max-w-full">
-            <div className="rounded-[18px] px-4 py-3 mb-3 bg-[#F7F7F8] text-[#353740] dark:bg-[#2A2B32] dark:text-[#ECECF1] max-w-[85%] md:max-w-[70%]">
-              <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.6] md:text-base md:leading-[1.7]">
+        <div className="flex min-w-0 flex-1 flex-col">
+          {!hasAction && (
+            <div className="w-full">
+              <p className="whitespace-pre-wrap break-words text-[15px] leading-[1.75] text-[#353740] dark:text-[#ECECF1]">
                 {message.content}
               </p>
-            </div>
-            <ActionConfirmationCard
-              action={message.action}
-              onConfirm={handleConfirmAction}
-              onCancel={handleCancelAction}
-              isExecuting={isExecuting}
-            >
-              <InvoicePreviewCard data={message.action.data as InvoiceActionData} />
-            </ActionConfirmationCard>
-          </div>
-        )}
-
-        {/* Timestamp and actions */}
-        <div className="mt-1 flex items-center gap-2 px-1">
-          <span className="text-[11px] text-[#6E6E80] opacity-65">
-            {format(message.timestamp, 'h:mm a')}
-          </span>
-
-          {isError && (
-            <div className="flex items-center gap-1">
-              <AlertCircle className="h-3 w-3 text-red-500" />
-              <span className="text-xs text-red-500">Failed</span>
-              {onRetry && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onRetry(message.id)}
-                  className="h-auto p-0 text-xs text-red-500 hover:text-red-600"
-                >
-                  <RefreshCw className="mr-1 h-3 w-3" />
-                  Retry
-                </Button>
+              {isError && (
+                <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900 dark:bg-red-950">
+                  <p className="text-sm text-red-600 dark:text-red-400">Failed to send message</p>
+                </div>
               )}
             </div>
           )}
 
-          {message.status === 'sending' && (
-            <span className="text-xs text-[#6E6E80]">Sending...</span>
+          {/* Action Confirmation Card */}
+          {hasAction && message.action.type === 'create_invoice' && (
+            <div className="w-full">
+              <p className="mb-4 whitespace-pre-wrap break-words text-[15px] leading-[1.75] text-[#353740] dark:text-[#ECECF1]">
+                {message.content}
+              </p>
+              <ActionConfirmationCard
+                action={message.action}
+                onConfirm={handleConfirmAction}
+                onCancel={handleCancelAction}
+                isExecuting={isExecuting}
+              >
+                <InvoicePreviewCard data={message.action.data as InvoiceActionData} />
+              </ActionConfirmationCard>
+            </div>
           )}
-        </div>
 
-        {/* Action icons for AI messages */}
-        {!isUser && message.status === 'sent' && (
-          <div
-            className={cn(
-              'mt-1 flex items-center gap-2 px-1 transition-opacity',
-              showActions ? 'opacity-100' : 'opacity-0'
+          {/* Timestamp and actions */}
+          <div className="mt-2 flex items-center gap-3">
+            <span className="text-xs text-[#6E6E80] dark:text-[#9CA3AF]">
+              {format(message.timestamp, 'h:mm a')}
+            </span>
+
+            {isError && onRetry && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onRetry(message.id)}
+                className="h-auto px-2 py-1 text-xs text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+              >
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Retry
+              </Button>
             )}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto p-0 text-[#6E6E80] hover:text-[#353740]"
-              onClick={() => navigator.clipboard.writeText(message.content)}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto p-0 text-[#6E6E80] hover:text-[#353740]"
-            >
-              <ThumbsUp className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto p-0 text-[#6E6E80] hover:text-[#353740]"
-            >
-              <ThumbsDown className="h-4 w-4" />
-            </Button>
+
+            {message.status === 'sending' && (
+              <span className="text-xs text-[#6E6E80] dark:text-[#9CA3AF]">Sending...</span>
+            )}
+
+            {/* Action icons for AI messages */}
+            {!isUser && message.status === 'sent' && (
+              <div
+                className={cn(
+                  'flex items-center gap-1 transition-opacity',
+                  showActions ? 'opacity-100' : 'opacity-0'
+                )}
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-[#6E6E80] hover:bg-[#E5E7EB] hover:text-[#353740] dark:hover:bg-[#374151]"
+                  onClick={() => navigator.clipboard.writeText(message.content)}
+                  title="Copy"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-[#6E6E80] hover:bg-[#E5E7EB] hover:text-[#353740] dark:hover:bg-[#374151]"
+                  title="Like"
+                >
+                  <ThumbsUp className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-[#6E6E80] hover:bg-[#E5E7EB] hover:text-[#353740] dark:hover:bg-[#374151]"
+                  title="Dislike"
+                >
+                  <ThumbsDown className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

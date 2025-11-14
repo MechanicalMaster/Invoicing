@@ -22,71 +22,72 @@ export function ChatHeader({ onToggleSidebar }: ChatHeaderProps) {
   const { modeConfig } = useChatModeContext()
 
   return (
-    <div className="flex items-center justify-between border-b border-[#D1D5DB] bg-white p-3 dark:border-[#4E4F60] dark:bg-[#212121]">
+    <div className="flex items-center justify-between border-b border-[#E5E7EB] bg-white px-4 py-3 dark:border-[#2A2B32] dark:bg-[#212121]">
       {/* Left side - Menu (only show for authenticated users) */}
-      {isAuthenticated && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleSidebar}
-          className="h-9 w-9 text-[#6E6E80] hover:bg-[#F7F7F8] hover:text-[#353740] dark:hover:bg-[#2A2B32]"
-          aria-label="Menu"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-      )}
-
-      {/* Center - Mode name with dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <div className="flex items-center gap-2">
+        {isAuthenticated && (
           <Button
             variant="ghost"
-            className="flex items-center gap-1 text-[15px] font-medium text-[#353740] hover:bg-[#F7F7F8] dark:text-[#ECECF1] dark:hover:bg-[#2A2B32]"
+            size="icon"
+            onClick={onToggleSidebar}
+            className="h-8 w-8 text-[#6E6E80] hover:bg-[#F7F7F8] hover:text-[#353740] dark:hover:bg-[#2A2B32]"
+            aria-label="Menu"
           >
-            <span className="mr-1">{modeConfig.icon}</span>
-            AI Assistant
-            <ChevronDown className="h-4 w-4 text-[#6E6E80]" />
+            <Menu className="h-4 w-4" />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" className="w-48">
-          <DropdownMenuItem className="text-[13px]">
-            <span className="flex items-center gap-2">
-              <ChatModeBadge />
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="text-[13px]">
-            <span className="flex items-center gap-2">
-              <span className="text-[#EA7317]">●</span>
-              GPT-4o Mini
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-[13px]" onClick={clearHistory}>
-            Clear conversation
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        )}
+
+        {/* Center - Mode name with dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-1.5 text-sm font-semibold text-[#353740] hover:bg-[#F7F7F8] dark:text-[#ECECF1] dark:hover:bg-[#2A2B32]"
+            >
+              ChatGPT
+              <ChevronDown className="h-3.5 w-3.5 text-[#6E6E80]" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem className="text-xs">
+              <span className="flex items-center gap-2">
+                <ChatModeBadge />
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-xs">
+              <span className="flex items-center gap-2">
+                <span className="text-[#10A37F]">●</span>
+                GPT-4o Mini
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-xs" onClick={clearHistory}>
+              Clear conversation
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Right side - New chat and close buttons */}
       <div className="flex items-center gap-1">
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 text-[#6E6E80] hover:bg-[#F7F7F8] hover:text-[#353740] dark:hover:bg-[#2A2B32]"
+          className="h-8 w-8 text-[#6E6E80] hover:bg-[#F7F7F8] hover:text-[#353740] dark:hover:bg-[#2A2B32]"
           aria-label="New chat"
           onClick={createNewSession}
         >
-          <MessageSquarePlus className="h-5 w-5" />
+          <MessageSquarePlus className="h-4 w-4" />
         </Button>
 
         <Button
           variant="ghost"
           size="icon"
           onClick={closeChat}
-          className="h-9 w-9 text-[#6E6E80] hover:bg-[#F7F7F8] hover:text-[#353740] dark:hover:bg-[#2A2B32]"
+          className="h-8 w-8 text-[#6E6E80] hover:bg-[#F7F7F8] hover:text-[#353740] dark:hover:bg-[#2A2B32]"
           aria-label="Close chat"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </Button>
       </div>
     </div>
