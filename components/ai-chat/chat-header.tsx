@@ -44,7 +44,8 @@ export function ChatHeader({ onToggleSidebar }: ChatHeaderProps) {
               variant="ghost"
               className="flex items-center gap-1.5 text-sm font-semibold text-[#353740] hover:bg-[#F7F7F8] dark:text-[#ECECF1] dark:hover:bg-[#2A2B32]"
             >
-              ChatGPT
+              <span className="mr-0.5">{modeConfig.icon}</span>
+              {modeConfig.displayName}
               <ChevronDown className="h-3.5 w-3.5 text-[#6E6E80]" />
             </Button>
           </DropdownMenuTrigger>

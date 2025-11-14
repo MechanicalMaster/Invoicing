@@ -17,7 +17,14 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Sethiya Gold - Premium Jewelry Management",
   description: "A premium invoicing system for Indian jewelry shops",
-  generator: 'v0.dev'
+  generator: 'v0.dev',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: 'cover',
+  },
 }
 
 export default function RootLayout({
